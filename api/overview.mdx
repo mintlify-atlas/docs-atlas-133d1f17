@@ -99,6 +99,24 @@ The API implements RFC 7233 Range Requests for efficient video streaming. This a
 
 See the [Video endpoint](/api/video) for implementation details.
 
+## Available Endpoints
+
+### Generation Endpoints
+
+- **POST** `/api/generate` - Start a new video generation
+- **GET** `/api/progress/{generation_id}` - Stream real-time progress via SSE
+- **GET** `/api/status/{generation_id}` - Get current generation status
+- **GET** `/api/video/{filename}` - Stream generated video file
+
+### Data Retrieval Endpoints
+
+- **GET** `/api/content/{generation_id}` - Get generated presentation content structure
+- **GET** `/api/script/{generation_id}` - Get generated narration scripts
+
+### System Endpoints
+
+- **GET** `/health` - Health check endpoint
+
 ## Health Check
 
 A health check endpoint is available at `/health`:
@@ -113,3 +131,37 @@ Response:
   "status": "healthy"
 }
 ```
+
+## Generation Status
+
+Check the status of a video generation without using SSE:
+
+```bash
+curl http://localhost:8000/api/status/your-topic-name
+```
+
+Response:
+```json
+{
+  "status": "generating_audio",
+  "progress": 45,
+  "message": "🎤 Generating audio for slide 2/5...",
+  "timestamp": "14:23:45"
+}
+```
+
+## Content and Script Retrieval
+
+After generation completes, retrieve the structured content and scripts:
+
+<CodeGroup>
+```bash Get Content
+curl http://localhost:8000/api/content/your-topic-name
+```
+
+```bash Get Script
+curl http://localhost:8000/api/script/your-topic-name
+```
+</CodeGroup>
+
+These endpoints return the JSON data structures used during generation, useful for debugging or building custom frontends.
