@@ -1,0 +1,123 @@
+{
+  "projectType": "saas",
+  "projectName": "AI Video Presentation Generator",
+  "projectDescription": "Transform any topic into an engaging video presentation with AI-powered content generation, voice narration, dynamic animations, and professional visuals.",
+  "theme": "palm",
+  "primaryColor": "#8B5CF6",
+  "lightColor": "#A78BFA",
+  "darkColor": "#6D28D9",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "installation"
+            ]
+          },
+          {
+            "group": "Core Features",
+            "pages": [
+              "features/content-generation",
+              "features/voice-narration",
+              "features/visual-media",
+              "features/video-composition"
+            ]
+          },
+          {
+            "group": "User Guides",
+            "pages": [
+              "guides/creating-presentations",
+              "guides/customizing-slides",
+              "guides/working-with-animations",
+              "guides/exporting-videos"
+            ]
+          },
+          {
+            "group": "Configuration",
+            "pages": [
+              "configuration/environment-setup",
+              "configuration/api-keys",
+              "configuration/language-options"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Endpoints",
+            "pages": [
+              "api/overview",
+              "api/generate",
+              "api/progress",
+              "api/video"
+            ]
+          },
+          {
+            "group": "Backend Components",
+            "pages": [
+              "api/content-generator",
+              "api/script-generator",
+              "api/voice-generator",
+              "api/manim-generator",
+              "api/video-composer"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Development",
+        "groups": [
+          {
+            "group": "Architecture",
+            "pages": [
+              "development/architecture",
+              "development/frontend",
+              "development/backend",
+              "development/pipeline"
+            ]
+          },
+          {
+            "group": "Contributing",
+            "pages": [
+              "development/setup",
+              "development/dependencies",
+              "development/troubleshooting"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "AI-powered content generation using Google Gemini",
+    "Multi-language voice narration with Sarvam AI TTS",
+    "Dynamic Manim animations for mathematical and scientific concepts",
+    "Smart visual media integration with Unsplash images",
+    "Professional video composition with FFmpeg",
+    "Real-time progress tracking with Server-Sent Events",
+    "Interactive slide editor with drag-and-drop timeline",
+    "PowerPoint export functionality",
+    "Customizable tone and language options"
+  ],
+  "publicApiSurface": [
+    "POST /api/generate - Generate video presentation from topic",
+    "GET /api/progress/{generation_id} - Stream real-time generation progress",
+    "GET /api/status/{generation_id} - Get generation status",
+    "GET /api/video/{filename} - Stream generated video with range support",
+    "GET /api/content/{generation_id} - Get generated content data",
+    "GET /api/script/{generation_id} - Get generated script data",
+    "ContentGenerator.generate_content() - Generate presentation structure",
+    "ScriptGenerator.generate_scripts() - Generate narration scripts",
+    "VoiceGenerator.generate_voice_for_slide() - Generate audio per slide",
+    "ManimGenerator.generate_animation_code() - Generate Manim animation code",
+    "ImageFetcher.fetch_image() - Fetch relevant images from Unsplash",
+    "VideoComposer.compose_final_video() - Compose final video with audio"
+  ]
+}
