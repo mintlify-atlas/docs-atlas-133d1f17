@@ -1,0 +1,530 @@
+---
+title: 'Language Options'
+description: 'Multi-language support for voice generation and presentation customization'
+---
+
+## Overview
+
+The AI Video Presentation Generator supports **11+ languages** for voice narration through Sarvam AI's text-to-speech API. Each language has carefully selected voice speakers and configurable parameters for tone, pace, and style.
+
+## Supported Languages
+
+The system supports the following languages with dedicated voice speakers:
+
+### Primary Languages
+
+<CardGroup cols={2}>
+  <Card title="English" icon="language">
+    **Language Code**: `en-IN`  
+    **Speaker**: anushka  
+    **Voice Type**: Indian English Female  
+    **Use Case**: International presentations, technical content
+  </Card>
+  
+  <Card title="Hindi" icon="language">
+    **Language Code**: `hi-IN`  
+    **Speaker**: manisha  
+    **Voice Type**: Hindi Female  
+    **Use Case**: North Indian audience, cultural content
+  </Card>
+  
+  <Card title="Kannada" icon="language">
+    **Language Code**: `kn-IN`  
+    **Speaker**: vidya  
+    **Voice Type**: Kannada Female  
+    **Use Case**: Karnataka region, local content
+  </Card>
+  
+  <Card title="Telugu" icon="language">
+    **Language Code**: `te-IN`  
+    **Speaker**: arya  
+    **Voice Type**: Telugu Female  
+    **Use Case**: Andhra Pradesh, Telangana regions
+  </Card>
+</CardGroup>
+
+### Additional Supported Languages
+
+The system also supports these languages (configured in `voice_generator.py:142-155`):
+
+| Language | Code | Region | Status |
+|----------|------|--------|--------|
+| Tamil | `ta-IN` | Tamil Nadu | Supported |
+| Bengali | `bn-IN` | West Bengal, Bangladesh | Supported |
+| Gujarati | `gu-IN` | Gujarat | Supported |
+| Malayalam | `ml-IN` | Kerala | Supported |
+| Marathi | `mr-IN` | Maharashtra | Supported |
+| Odia | `or-IN` | Odisha | Supported |
+| Punjabi | `pa-IN` | Punjab | Supported |
+
+<Info>
+  All language codes follow the ISO 639-1 standard with `-IN` suffix for Indian regional variants.
+</Info>
+
+## Language Configuration
+
+### Setting Language Parameter
+
+Specify the language when making a presentation generation request:
+
+<CodeGroup>
+```python API Request
+request_data = {
+    "topic": "Introduction to Machine Learning",
+    "num_slides": 5,
+    "language": "english",  # Language name in lowercase
+    "tone": "formal"
+}
+```
+
+```javascript Frontend (React)
+const response = await fetch('http://localhost:8000/api/generate', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    topic: 'Introduction to Machine Learning',
+    num_slides: 5,
+    language: 'hindi',     // Language name
+    tone: 'casual'
+  })
+});
+```
+
+```bash cURL
+curl -X POST http://localhost:8000/api/generate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "topic": "Climate Change Awareness",
+    "num_slides": 5,
+    "language": "kannada",
+    "tone": "formal"
+  }'
+```
+</CodeGroup>
+
+### Language-Speaker Mapping
+
+The system automatically maps language names to appropriate voice speakers (from `config.py:40-45`):
+
+```python
+SARVAM_SPEAKER_MAP = {
+    "english": "anushka",  # Indian English female voice
+    "hindi": "manisha",    # Hindi female voice
+    "kannada": "vidya",    # Kannada female voice
+    "telugu": "arya"       # Telugu female voice
+}
+```
+
+If no speaker is configured for a language, the system defaults to **"anushka"** (English).
+
+## Tone Options
+
+Customize the narration style with different tone parameters:
+
+### Available Tones
+
+<Tabs>
+  <Tab title="Formal">
+    **Use Case**: Professional presentations, academic content, business meetings
+    
+    **Characteristics**:
+    - Professional and authoritative
+    - Clear pronunciation
+    - Structured delivery
+    - Appropriate for corporate settings
+    
+    **Example Topics**:
+    - Technical documentation
+    - Research presentations
+    - Product launches
+    - Investor pitches
+  </Tab>
+  
+  <Tab title="Casual">
+    **Use Case**: Educational content, tutorials, storytelling
+    
+    **Characteristics**:
+    - Conversational and friendly
+    - Relatable language
+    - Engaging delivery
+    - Approachable tone
+    
+    **Example Topics**:
+    - YouTube tutorials
+    - Social media content
+    - Student presentations
+    - Community workshops
+  </Tab>
+  
+  <Tab title="Enthusiastic">
+    **Use Case**: Marketing, motivational content, announcements
+    
+    **Characteristics**:
+    - Energetic and upbeat
+    - Persuasive language
+    - Dynamic delivery
+    - Compelling presentation
+    
+    **Example Topics**:
+    - Product promotions
+    - Event announcements
+    - Motivational speeches
+    - Training sessions
+  </Tab>
+</Tabs>
+
+### Setting Tone
+
+Include the `tone` parameter in your request:
+
+```python
+request = GenerateRequest(
+    topic="Digital Marketing Strategies",
+    num_slides=5,
+    language="english",
+    tone="formal"  # Options: "formal", "casual", "enthusiastic"
+)
+```
+
+## Voice Customization
+
+### TTS Parameters
+
+The voice generator uses these parameters for audio synthesis (from `voice_generator.py:26-36`):
+
+<ParamField path="pitch" type="number" default="0">
+  Voice pitch adjustment in semitones.
+  - Negative values: Lower pitch (deeper voice)
+  - Zero: Natural pitch
+  - Positive values: Higher pitch
+  
+  Range: `-12` to `+12`
+</ParamField>
+
+<ParamField path="pace" type="number" default="1.0">
+  Speech rate multiplier.
+  - `0.5`: Half speed (slower)
+  - `1.0`: Normal speed
+  - `2.0`: Double speed (faster)
+  
+  Range: `0.5` to `2.0`
+</ParamField>
+
+<ParamField path="loudness" type="number" default="1.5">
+  Audio volume multiplier.
+  - `1.0`: Standard volume
+  - `1.5`: Increased volume (default)
+  - `2.0`: Maximum volume
+  
+  Range: `0.5` to `2.0`
+</ParamField>
+
+<ParamField path="speech_sample_rate" type="number" default="22050">
+  Audio sample rate in Hz. Higher values = better quality but larger files.
+  - `16000`: Lower quality, smaller files
+  - `22050`: Balanced (default)
+  - `44100`: High quality, larger files
+</ParamField>
+
+### Example Custom Configuration
+
+To customize voice parameters, modify the payload in `voice_generator.py:26-36`:
+
+```python
+payload = {
+    "inputs": [narration_text],
+    "target_language_code": self._get_language_code(language),
+    "speaker": speaker,
+    "pitch": 0,           # Adjust for voice pitch
+    "pace": 1.0,          # Adjust for speech rate
+    "loudness": 1.5,      # Adjust for volume
+    "speech_sample_rate": 22050,
+    "enable_preprocessing": True,
+    "model": Config.SARVAM_MODEL
+}
+```
+
+## Multi-Language Support Details
+
+### How Language Processing Works
+
+<Steps>
+  <Step title="Content Generation">
+    Gemini AI generates presentation content in the requested language.
+    
+    The `ScriptGenerator` creates narration scripts appropriate for the language and tone.
+  </Step>
+  
+  <Step title="Script Formatting">
+    Scripts are formatted with timestamps and segmented by slide.
+    
+    Each slide gets a dedicated narration text aligned with its content.
+  </Step>
+  
+  <Step title="Language Mapping">
+    The system maps the language name to the appropriate:
+    - Language code (e.g., `en-IN`, `hi-IN`)
+    - Voice speaker (e.g., `anushka`, `manisha`)
+    - Regional variations if applicable
+  </Step>
+  
+  <Step title="Audio Generation">
+    Sarvam AI's TTS engine synthesizes audio for each slide.
+    
+    Audio files are saved to `backend/outputs/audio/` as WAV files.
+  </Step>
+  
+  <Step title="Audio Combination">
+    Individual slide audio files are concatenated into one complete narration.
+    
+    The final audio is synchronized with slide timings.
+  </Step>
+</Steps>
+
+### Per-Slide Audio Generation
+
+The system generates audio **per slide** for better timing control (from `app.py:258-286`):
+
+```python
+for idx, slide_script in enumerate(script_data['slide_scripts'], 1):
+    slide_num = slide_script['slide_number']
+    
+    # Generate audio for this slide
+    audio_path = voice_gen.generate_voice_for_slide(
+        slide_script['narration_text'],
+        slide_num,
+        topic,
+        language  # Language parameter passed here
+    )
+    
+    # Calculate actual audio duration
+    audio_clip = AudioFileClip(audio_path)
+    actual_durations[slide_num] = audio_clip.duration
+```
+
+This approach ensures:
+- Accurate slide timing
+- Better audio quality
+- Easier debugging
+- Flexible editing
+
+### Text Length Limitations
+
+Sarvam AI TTS has a **500 character limit** per request. The system automatically handles this:
+
+```python
+def generate_voice_for_slide(self, narration_text: str, ...):
+    # Limit to 500 characters per request
+    payload = {
+        "inputs": [narration_text[:500]],
+        # ... other parameters
+    }
+```
+
+For longer narrations, text is split into chunks (see `voice_generator.py:157-183`).
+
+## Language Selection Best Practices
+
+<AccordionGroup>
+  <Accordion title="Choose Based on Audience" icon="users">
+    **Consider your target audience:**
+    - **International**: Use English
+    - **Regional**: Use local language (Hindi, Kannada, etc.)
+    - **Multilingual**: Generate multiple versions
+    
+    Match language to audience demographics for better engagement.
+  </Accordion>
+  
+  <Accordion title="Match Content Type to Tone" icon="wand-magic-sparkles">
+    **Tone selection guidelines:**
+    - **Technical/Professional**: Use `formal` tone
+    - **Educational/Tutorial**: Use `casual` tone
+    - **Marketing/Sales**: Use `enthusiastic` tone
+    
+    Appropriate tone enhances message delivery.
+  </Accordion>
+  
+  <Accordion title="Test Different Languages" icon="flask">
+    **Quality assurance:**
+    - Generate test videos in target languages
+    - Verify pronunciation and clarity
+    - Check cultural appropriateness
+    - Gather feedback from native speakers
+    
+    Testing ensures quality across all languages.
+  </Accordion>
+  
+  <Accordion title="Consider Regional Variations" icon="globe">
+    **Regional considerations:**
+    - Indian English has distinct pronunciation
+    - Regional languages may have dialects
+    - Cultural context affects word choice
+    - Formal vs. casual varies by culture
+    
+    Be mindful of regional nuances.
+  </Accordion>
+</AccordionGroup>
+
+## Code Examples
+
+### Backend: Language Processing
+
+From `voice_generator.py:140-155`, the language code mapping:
+
+```python
+def _get_language_code(self, language: str) -> str:
+    """Map language name to Sarvam AI language code"""
+    language_map = {
+        "english": "en-IN",
+        "hindi": "hi-IN",
+        "kannada": "kn-IN",
+        "telugu": "te-IN",
+        "tamil": "ta-IN",
+        "bengali": "bn-IN",
+        "gujarati": "gu-IN",
+        "malayalam": "ml-IN",
+        "marathi": "mr-IN",
+        "odia": "or-IN",
+        "punjabi": "pa-IN"
+    }
+    return language_map.get(language.lower(), "en-IN")
+```
+
+### Frontend: Language Selection UI
+
+Example React component for language selection:
+
+```jsx
+import React, { useState } from 'react';
+
+const languages = [
+  { value: 'english', label: 'English' },
+  { value: 'hindi', label: 'हिन्दी (Hindi)' },
+  { value: 'kannada', label: 'ಕನ್ನಡ (Kannada)' },
+  { value: 'telugu', label: 'తెలుగు (Telugu)' },
+  { value: 'tamil', label: 'தமிழ் (Tamil)' },
+  // ... more languages
+];
+
+const LanguageSelector = ({ value, onChange }) => {
+  return (
+    <select 
+      value={value} 
+      onChange={(e) => onChange(e.target.value)}
+      className="language-selector"
+    >
+      {languages.map(lang => (
+        <option key={lang.value} value={lang.value}>
+          {lang.label}
+        </option>
+      ))}
+    </select>
+  );
+};
+```
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Language Not Supported Error">
+    **Problem**: Error message about unsupported language
+    
+    **Solutions**:
+    - Check spelling of language name (must be lowercase)
+    - Verify language is in supported list
+    - Use English name, not native name ("hindi" not "हिन्दी")
+    - Check if Sarvam AI supports the language
+  </Accordion>
+  
+  <Accordion title="Audio Quality Issues">
+    **Problem**: Poor audio quality or robotic voice
+    
+    **Solutions**:
+    - Increase `speech_sample_rate` to 44100
+    - Adjust `pace` parameter (try 0.9 for better clarity)
+    - Check `loudness` setting (may cause distortion if too high)
+    - Verify API key has access to latest models
+  </Accordion>
+  
+  <Accordion title="Wrong Voice Gender/Accent">
+    **Problem**: Voice doesn't match expected speaker
+    
+    **Solutions**:
+    - Check speaker mapping in `config.py`
+    - Verify language is correctly specified
+    - Consult Sarvam AI docs for available speakers
+    - Update speaker map if needed
+  </Accordion>
+  
+  <Accordion title="Text Cut Off (500 Character Limit)">
+    **Problem**: Narration text is truncated
+    
+    **Solutions**:
+    - System automatically limits to 500 chars per slide
+    - Use `generate_complete_audio()` for long texts (auto-chunks)
+    - Reduce narration length in script generation
+    - Split slides for better pacing
+  </Accordion>
+</AccordionGroup>
+
+## Performance Considerations
+
+### Audio Generation Time
+
+Expected generation times per slide:
+
+| Language | Avg. Time | Notes |
+|----------|-----------|-------|
+| English | 2-3 seconds | Fastest, most optimized |
+| Hindi | 3-4 seconds | Good performance |
+| Regional | 4-5 seconds | Slightly slower due to processing |
+
+**Total presentation time** = (slides × avg. time) + combination overhead
+
+### Optimization Tips
+
+<CardGroup cols={2}>
+  <Card title="Parallel Processing" icon="bolt">
+    Audio generation runs sequentially by default.
+    
+    Consider parallel processing for faster generation with multiple slides.
+  </Card>
+  
+  <Card title="Caching" icon="database">
+    Cache generated audio for repeated presentations.
+    
+    Reuse audio files if topic/script haven't changed.
+  </Card>
+  
+  <Card title="Batch Requests" icon="layer-group">
+    Generate multiple slides in batches.
+    
+    Reduces API overhead and improves throughput.
+  </Card>
+  
+  <Card title="Audio Compression" icon="file-zipper">
+    Use compressed formats (MP3) instead of WAV.
+    
+    Reduces storage and bandwidth requirements.
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="API Keys Setup" icon="key" href="/configuration/api-keys">
+    Learn how to obtain your Sarvam AI API key
+  </Card>
+  
+  <Card title="Environment Setup" icon="gear" href="/configuration/environment-setup">
+    Configure your complete development environment
+  </Card>
+  
+  <Card title="Generation Process" icon="wand-magic-sparkles" href="/development/pipeline">
+    Understand how the full generation pipeline works
+  </Card>
+  
+  <Card title="API Reference" icon="code" href="/api/generate">
+    View complete API documentation for generation endpoint
+  </Card>
+</CardGroup>

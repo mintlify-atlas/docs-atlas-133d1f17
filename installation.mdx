@@ -1,0 +1,390 @@
+---
+title: Installation
+description: Detailed installation guide for the AI Video Presentation Generator
+---
+
+## System Requirements
+
+<CardGroup cols={2}>
+  <Card title="Backend" icon="server">
+    - Python 3.8 or higher
+    - pip package manager
+    - 2GB+ free disk space
+    - FFmpeg for video processing
+  </Card>
+  
+  <Card title="Frontend" icon="browser">
+    - Node.js 16 or higher
+    - npm or yarn
+    - Modern web browser
+  </Card>
+</CardGroup>
+
+<Warning>
+  The original project was developed for Windows. Some paths and commands may need adjustment for macOS/Linux.
+</Warning>
+
+## Backend Installation
+
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/Kamal-Nayan-Kumar/AI-Video-Gen
+cd AI-Video-Gen
+```
+
+### 2. Set Up Python Virtual Environment
+
+Navigate to the backend directory:
+
+```bash
+cd backend
+```
+
+Create and activate a virtual environment:
+
+<CodeGroup>
+  ```bash Windows
+  python -m venv venv
+  venv\Scripts\activate
+  ```
+
+  ```bash macOS/Linux
+  python3 -m venv venv
+  source venv/bin/activate
+  ```
+</CodeGroup>
+
+<Note>
+  You should see `(venv)` in your terminal prompt when the virtual environment is activated.
+</Note>
+
+### 3. Install Python Dependencies
+
+With your virtual environment activated, install all required packages:
+
+```bash
+pip install -r requirements.txt
+```
+
+This will install:
+
+- **fastapi** (0.115.0) - Web framework for the API
+- **uvicorn** (0.32.0) - ASGI server
+- **python-dotenv** (1.0.1) - Environment variable management
+- **pydantic** (2.9.2) - Data validation
+- **google-generativeai** (0.8.3) - Gemini AI SDK
+- **manim** (0.18.1) - Mathematical animation engine
+- **moviepy** (2.0.0+) - Video editing
+- **requests** (2.32.3) - HTTP library
+- **python-multipart** (0.0.12) - Form data parsing
+- **Pillow** (10.0.0+) - Image processing
+
+### 4. Install FFmpeg
+
+FFmpeg is required for video composition and audio processing.
+
+<CodeGroup>
+  ```bash Windows
+  # Download from https://ffmpeg.org/download.html
+  # Extract the archive
+  # Add the bin/ folder to your System PATH
+  ```
+
+  ```bash macOS
+  # Using Homebrew
+  brew install ffmpeg
+  ```
+
+  ```bash Linux (Ubuntu/Debian)
+  sudo apt update
+  sudo apt install ffmpeg
+  ```
+</CodeGroup>
+
+Verify FFmpeg installation:
+
+```bash
+ffmpeg -version
+```
+
+You should see version information if FFmpeg is correctly installed.
+
+### 5. Install Manim
+
+Manim is used to generate mathematical animations for slides:
+
+```bash
+pip install manim
+```
+
+<Note>
+  Manim may require additional system dependencies (LaTeX, Cairo, Pango). See the [Manim installation guide](https://docs.manim.community/en/stable/installation.html) if you encounter issues.
+</Note>
+
+### 6. Configure Environment Variables
+
+Create a `.env` file in the `backend/` directory:
+
+```bash
+cp .env.example .env
+```
+
+Edit the `.env` file with your API keys:
+
+```bash
+# API Keys
+GEMINI_API_KEY=your_gemini_api_key_here
+SARVAM_API_KEY=your_sarvam_api_key_here
+UNSPLASH_ACCESS_KEY=your_unsplash_access_key_here
+```
+
+<AccordionGroup>
+  <Accordion title="How to get Gemini API key">
+    1. Go to [Google AI Studio](https://makersuite.google.com/app/apikey)
+    2. Sign in with your Google account
+    3. Click "Create API Key"
+    4. Copy the key and paste it in your `.env` file
+  </Accordion>
+
+  <Accordion title="How to get Sarvam AI API key">
+    1. Visit [Sarvam AI](https://www.sarvam.ai/)
+    2. Sign up for an account
+    3. Navigate to API settings
+    4. Generate an API key
+    5. Copy the key to your `.env` file
+
+    The system uses Sarvam AI's text-to-speech service with the **bulbul:v2** model for generating narration in multiple Indian languages.
+  </Accordion>
+
+  <Accordion title="How to get Unsplash API key">
+    1. Go to [Unsplash Developers](https://unsplash.com/developers)
+    2. Create an account or sign in
+    3. Create a new application
+    4. Copy the Access Key
+    5. Paste it in your `.env` file
+  </Accordion>
+</AccordionGroup>
+
+### 7. Verify Backend Installation
+
+Start the FastAPI server:
+
+```bash
+python app.py
+```
+
+You should see output like:
+
+```
+INFO:     Started server process [12345]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+```
+
+Test the health endpoint:
+
+```bash
+curl http://localhost:8000/health
+```
+
+Expected response:
+
+```json
+{"status": "healthy"}
+```
+
+## Frontend Installation
+
+### 1. Navigate to Frontend Directory
+
+```bash
+cd frontend
+```
+
+### 2. Install Node Dependencies
+
+<CodeGroup>
+  ```bash npm
+  npm install
+  ```
+
+  ```bash yarn
+  yarn install
+  ```
+
+  ```bash pnpm
+  pnpm install
+  ```
+</CodeGroup>
+
+This will install:
+
+- **React** (19.1.1) - UI framework
+- **Vite** (7.1.7) - Build tool and dev server
+- **axios** (1.12.2) - HTTP client for API calls
+- **@hello-pangea/dnd** (18.0.1) - Drag and drop functionality
+- **lucide-react** (0.545.0) - Icon library
+- **pptxgenjs** (4.0.1) - PowerPoint export
+- **Tailwind CSS** (4.1.14) - Styling framework
+
+### 3. Start Development Server
+
+<CodeGroup>
+  ```bash npm
+  npm run dev
+  ```
+
+  ```bash yarn
+  yarn dev
+  ```
+
+  ```bash pnpm
+  pnpm dev
+  ```
+</CodeGroup>
+
+The frontend will start on:
+
+```
+http://localhost:5173
+```
+
+<Note>
+  The frontend is pre-configured to connect to the backend at `http://localhost:8000`. If you change the backend port, update the API configuration in `frontend/src/utils/api.js`.
+</Note>
+
+### 4. Verify Frontend Installation
+
+Open your browser and navigate to:
+
+```
+http://localhost:5173
+```
+
+You should see the AI Video Presentation Generator interface with:
+- Topic input field
+- Number of slides selector
+- Language dropdown (English, Hindi, Kannada, Telugu)
+- Tone selector (Formal, Casual, Educational)
+- Generate button
+
+## Directory Structure
+
+After installation, your project structure should look like:
+
+```
+AI-VIDEO-GEN/
+├── backend/
+│   ├── generators/          # AI generation modules
+│   ├── utils/               # Video rendering utilities
+│   ├── outputs/             # Generated content (created on first run)
+│   │   ├── audio/
+│   │   ├── images/
+│   │   ├── manim_code/
+│   │   ├── manim_output/
+│   │   ├── scripts/
+│   │   ├── slides/
+│   │   └── final/           # Final MP4 videos
+│   ├── venv/                # Python virtual environment
+│   ├── .env                 # Your environment variables
+│   ├── app.py               # FastAPI entry point
+│   └── requirements.txt
+├── frontend/
+│   ├── src/
+│   │   ├── components/      # React components
+│   │   ├── utils/           # API utilities
+│   │   └── App.jsx
+│   ├── package.json
+│   └── vite.config.js
+└── README.md
+```
+
+<Note>
+  The `backend/outputs/` directory and its subdirectories are automatically created by the application when you generate your first presentation (see `backend/config.py:25`).
+</Note>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Generate your first AI video presentation
+  </Card>
+  
+  <Card title="Configuration" icon="sliders" href="/configuration/environment-setup">
+    Customize Manim settings, models, and output quality
+  </Card>
+  
+  <Card title="API Reference" icon="book" href="/api/overview">
+    Explore the FastAPI endpoints
+  </Card>
+  
+  <Card title="Troubleshooting" icon="wrench" href="/development/troubleshooting">
+    Common issues and solutions
+  </Card>
+</CardGroup>
+
+## Common Installation Issues
+
+<AccordionGroup>
+  <Accordion title="pip install fails on Windows">
+    If you encounter build errors:
+    
+    1. Install Microsoft C++ Build Tools from [Visual Studio](https://visualstudio.microsoft.com/downloads/)
+    2. Ensure you have the latest pip: `python -m pip install --upgrade pip`
+    3. Try installing packages individually to identify the problematic one
+  </Accordion>
+
+  <Accordion title="Manim installation fails">
+    Manim requires system dependencies:
+    
+    **Windows:**
+    - Install [MiKTeX](https://miktex.org/download) for LaTeX support
+    
+    **macOS:**
+    ```bash
+    brew install cairo pango ffmpeg
+    brew install --cask mactex-no-gui
+    ```
+    
+    **Linux:**
+    ```bash
+    sudo apt install libcairo2-dev libpango1.0-dev ffmpeg
+    sudo apt install texlive texlive-latex-extra
+    ```
+  </Accordion>
+
+  <Accordion title="FFmpeg not found">
+    After installing FFmpeg, verify it's in your PATH:
+    
+    ```bash
+    ffmpeg -version
+    ```
+    
+    If not found:
+    - **Windows**: Add FFmpeg's `bin` folder to System Environment Variables
+    - **macOS/Linux**: Ensure the installation completed successfully and restart your terminal
+  </Accordion>
+
+  <Accordion title="Port 8000 or 5173 already in use">
+    To use different ports:
+    
+    **Backend:**
+    ```bash
+    uvicorn app:app --host 0.0.0.0 --port 8001
+    ```
+    
+    **Frontend:**
+    Edit `vite.config.js` and set:
+    ```javascript
+    export default defineConfig({
+      server: {
+        port: 5174
+      }
+    })
+    ```
+    
+    Remember to update the API URL in `frontend/src/utils/api.js` if you change the backend port.
+  </Accordion>
+</AccordionGroup>

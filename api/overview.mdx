@@ -1,0 +1,115 @@
+---
+title: 'API Overview'
+description: 'Overview of the AI Video Presentation Generator API'
+---
+
+## Base URL
+
+The API server runs on:
+
+```
+http://localhost:8000
+```
+
+All API endpoints are prefixed with `/api/` except for the health check endpoint.
+
+## CORS Configuration
+
+The API is configured to accept requests from the following origins:
+
+- `http://localhost:5173`
+- `http://127.0.0.1:5173`
+
+CORS settings:
+- **Credentials**: Allowed
+- **Methods**: All methods (`*`)
+- **Headers**: All headers (`*`)
+
+## Authentication
+
+Currently, the API does not require authentication. All endpoints are publicly accessible.
+
+## Common Response Patterns
+
+### Success Response
+
+Successful requests return a JSON response with a `status` field:
+
+```json
+{
+  "status": "success",
+  "message": "Operation completed successfully",
+  // Additional data fields...
+}
+```
+
+### Error Response
+
+Failed requests return an HTTP error status code with a detail message:
+
+```json
+{
+  "detail": "Error message describing what went wrong"
+}
+```
+
+## Common Status Codes
+
+| Status Code | Description |
+|-------------|-------------|
+| `200` | OK - Request succeeded |
+| `206` | Partial Content - Range request succeeded (video streaming) |
+| `404` | Not Found - Resource doesn't exist |
+| `416` | Range Not Satisfiable - Invalid range header |
+| `500` | Internal Server Error - Server-side error occurred |
+
+## Error Handling
+
+The API uses FastAPI's `HTTPException` for error handling. Errors include:
+
+- **404 Not Found**: When a generation ID, video file, or resource doesn't exist
+- **416 Range Not Satisfiable**: When an invalid `Range` header is provided for video streaming
+- **500 Internal Server Error**: When video generation or processing fails
+
+Error responses include a `detail` field with a descriptive error message:
+
+```json
+{
+  "detail": "Generation ID not found"
+}
+```
+
+## Rate Limiting
+
+<Note>
+The API does not currently implement rate limiting. Consider implementing rate limiting in production environments to prevent abuse.
+</Note>
+
+## Real-Time Progress Updates
+
+The API provides Server-Sent Events (SSE) for real-time progress tracking during video generation. See the [Progress endpoint](/api/progress) for details.
+
+## Video Streaming
+
+The API implements RFC 7233 Range Requests for efficient video streaming. This allows:
+
+- Seeking within videos
+- Resumable downloads
+- Bandwidth-efficient partial content delivery
+
+See the [Video endpoint](/api/video) for implementation details.
+
+## Health Check
+
+A health check endpoint is available at `/health`:
+
+```bash
+curl http://localhost:8000/health
+```
+
+Response:
+```json
+{
+  "status": "healthy"
+}
+```

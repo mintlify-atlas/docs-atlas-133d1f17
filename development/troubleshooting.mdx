@@ -1,0 +1,661 @@
+---
+title: 'Troubleshooting Guide'
+description: 'Common issues and solutions when developing or running the AI Video Presentation Generator'
+---
+
+## Overview
+
+This guide covers common errors, debugging strategies, and solutions for issues you might encounter while developing or using the AI Video Presentation Generator.
+
+---
+
+## Backend Issues
+
+<AccordionGroup>
+  <Accordion title="FFmpeg Not Found Error" icon="video">
+    **Error Message:**
+    ```
+    FileNotFoundError: [WinError 2] The system cannot find the file specified
+    MoviePy Error: Unable to find ffmpeg
+    ```
+    
+    **Cause:** FFmpeg is not installed or not in system PATH.
+    
+    **Solutions:**
+    
+    1. **Verify FFmpeg installation:**
+       ```bash
+       ffmpeg -version
+       ```
+    
+    2. **Install FFmpeg if missing:**
+       - Download from [https://ffmpeg.org/download.html](https://ffmpeg.org/download.html)
+       - Extract to `C:\ffmpeg` (or preferred location)
+       - Add `C:\ffmpeg\bin` to System PATH
+    
+    3. **Add to PATH (Windows):**
+       - Open System Properties → Environment Variables
+       - Edit "Path" under System Variables
+       - Click "New" and add `C:\ffmpeg\bin`
+       - **Restart your terminal** after changing PATH
+    
+    4. **Set environment variable manually:**
+       ```python
+       # Add to app.py or config.py
+       import os
+       os.environ["FFMPEG_BINARY"] = r"C:\ffmpeg\bin\ffmpeg.exe"
+       ```
+    
+    <Tip>
+    Always restart your terminal/IDE after modifying system PATH!
+    </Tip>
+  </Accordion>
+
+  <Accordion title="Manim Rendering Fails" icon="wand-magic-sparkles">
+    **Error Message:**
+    ```
+    Manim rendering failed: LaTeX error
+    Cairo error: ...
+    RuntimeError: Failed to render animation
+    ```
+    
+    **Common Causes & Solutions:**
+    
+    **1. LaTeX not installed:**
+    ```bash
+    # Install MiKTeX (Windows)
+    # Download from: https://miktex.org/download
+    ```
+    
+    **2. Invalid Manim code generated:**
+    Check the generated code in `backend/outputs/manim_code/`:
+    ```python
+    # Look for syntax errors in the generated Python file
+    # Common issues: missing imports, invalid MObject usage
+    ```
+    
+    **3. Manim version incompatibility:**
+    ```bash
+    # Ensure correct version
+    pip install manim==0.18.1
+    ```
+    
+    **4. Skip problematic animations:**
+    The system automatically falls back to text slides if Manim fails. Check logs:
+    ```
+    ❌ Error generating animation for slide X: <error details>
+    ✅ Generated TEXT-ONLY slide for slide X
+    ```
+    
+    **5. Check Manim output directory permissions:**
+    ```bash
+    # Ensure backend/outputs/manim_output/ is writable
+    ls -la backend/outputs/
+    ```
+    
+    <Note>
+    The app will gracefully degrade to text-only slides if animations fail, so the video will still be generated.
+    </Note>
+  </Accordion>
+
+  <Accordion title="API Key Errors" icon="key">
+    **Error Messages:**
+    ```
+    ValueError: GEMINI_API_KEY not found
+    401 Unauthorized: Invalid API key
+    403 Forbidden: API quota exceeded
+    ```
+    
+    **Solutions:**
+    
+    **1. Missing .env file:**
+    ```bash
+    # Create .env in backend/ directory
+    cd backend
+    copy .env.example .env
+    ```
+    
+    **2. Invalid or expired API keys:**
+    - **Gemini**: Get new key at [https://makersuite.google.com/app/apikey](https://makersuite.google.com/app/apikey)
+    - **Sarvam AI**: Contact Sarvam AI for API access
+    - **Unsplash**: Get key at [https://unsplash.com/developers](https://unsplash.com/developers)
+    
+    **3. .env file not loaded:**
+    Verify python-dotenv is installed:
+    ```bash
+    pip install python-dotenv
+    ```
+    
+    Check loading in app.py:
+    ```python
+    from dotenv import load_dotenv
+    load_dotenv()  # Must be called early
+    ```
+    
+    **4. API quota exceeded:**
+    ```
+    429 Too Many Requests
+    ```
+    - Wait for rate limit reset (usually hourly)
+    - Upgrade to paid tier if needed
+    - Implement request caching (future enhancement)
+    
+    **5. Debugging API key issues:**
+    ```python
+    # Add to app.py temporarily
+    import os
+    print(f"GEMINI_API_KEY loaded: {os.getenv('GEMINI_API_KEY')[:10]}...")
+    ```
+  </Accordion>
+
+  <Accordion title="CORS Errors" icon="shield">
+    **Error Message (in browser console):**
+    ```
+    Access to XMLHttpRequest blocked by CORS policy
+    CORS header 'Access-Control-Allow-Origin' missing
+    ```
+    
+    **Cause:** Frontend origin not allowed by backend.
+    
+    **Solutions:**
+    
+    **1. Check CORS middleware in app.py:**
+    ```python
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+    ```
+    
+    **2. Add your frontend URL:**
+    ```python
+    # If frontend is on different port
+    allow_origins=["http://localhost:5173", "http://localhost:3000"],
+    ```
+    
+    **3. For development, allow all origins (NOT for production):**
+    ```python
+    allow_origins=["*"],
+    ```
+    
+    **4. Check backend is running:**
+    ```bash
+    # Should respond with {"status": "healthy"}
+    curl http://localhost:8000/health
+    ```
+    
+    **5. Restart backend after changes:**
+    - CORS middleware changes require server restart
+    - `Ctrl+C` and run `python app.py` again
+  </Accordion>
+
+  <Accordion title="SSE Progress Stream Not Working" icon="tower-broadcast">
+    **Error Message:**
+    ```
+    EventSource failed: The connection was interrupted
+    Progress updates not showing
+    ```
+    
+    **Solutions:**
+    
+    **1. Check SSE endpoint:**
+    ```bash
+    # Test SSE is working
+    curl http://localhost:8000/api/test-sse
+    ```
+    
+    **2. Verify headers in app.py (line 190-196):**
+    ```python
+    headers={
+        "Cache-Control": "no-cache, no-transform",
+        "Connection": "keep-alive",
+        "X-Accel-Buffering": "no",
+        "Content-Encoding": "none",  # CRITICAL!
+    }
+    ```
+    
+    **3. Check frontend SSE connection:**
+    ```javascript
+    // In useSSEProgress.jsx
+    const eventSource = new EventSource(
+      `http://localhost:8000/api/progress/${generationId}`
+    );
+    ```
+    
+    **4. Browser console debugging:**
+    ```javascript
+    eventSource.onerror = (error) => {
+      console.error('SSE Error:', error);
+    };
+    ```
+    
+    **5. Nginx/proxy issues:**
+    If using reverse proxy, disable buffering:
+    ```nginx
+    proxy_buffering off;
+    proxy_cache off;
+    ```
+  </Accordion>
+
+  <Accordion title="Python Module Import Errors" icon="python">
+    **Error Messages:**
+    ```
+    ModuleNotFoundError: No module named 'fastapi'
+    ImportError: cannot import name 'ContentGenerator'
+    ```
+    
+    **Solutions:**
+    
+    **1. Virtual environment not activated:**
+    ```bash
+    # Windows
+    cd backend
+    venv\Scripts\activate
+    
+    # Verify
+    which python  # Should show venv path
+    ```
+    
+    **2. Dependencies not installed:**
+    ```bash
+    pip install -r requirements.txt
+    ```
+    
+    **3. Wrong Python version:**
+    ```bash
+    python --version  # Should be 3.8+
+    ```
+    
+    **4. Check sys.path:**
+    ```python
+    # Add to app.py temporarily
+    import sys
+    print(sys.path)
+    ```
+    
+    **5. Reinstall in development mode:**
+    ```bash
+    pip install -e .
+    ```
+  </Accordion>
+
+  <Accordion title="Video Generation Hangs or Freezes" icon="hourglass">
+    **Symptoms:**
+    - Progress stops at specific percentage
+    - No error message
+    - Process becomes unresponsive
+    
+    **Solutions:**
+    
+    **1. Check for specific failure points:**
+    - 30-48%: Audio generation issues
+    - 50-80%: Manim rendering stuck
+    - 85-95%: Video composition memory issue
+    
+    **2. Monitor backend logs:**
+    ```bash
+    # Watch for last logged message
+    # Process may be working (Manim takes time)
+    ```
+    
+    **3. Reduce complexity:**
+    ```python
+    # Test with fewer slides
+    num_slides: 3  # Instead of 10
+    ```
+    
+    **4. Check system resources:**
+    - Manim rendering is CPU-intensive
+    - Video composition is memory-intensive
+    - Ensure sufficient RAM (4GB+ free)
+    
+    **5. Increase timeout:**
+    ```python
+    # In video_renderer.py or video_composer.py
+    subprocess.run(..., timeout=600)  # 10 minutes
+    ```
+    
+    **6. Clear output cache:**
+    ```bash
+    # Old files may cause conflicts
+    rm -rf backend/outputs/*
+    ```
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Frontend Issues
+
+<AccordionGroup>
+  <Accordion title="npm install fails" icon="npm">
+    **Error Messages:**
+    ```
+    npm ERR! code ERESOLVE
+    npm ERR! peer dependency conflict
+    npm ERR! network timeout
+    ```
+    
+    **Solutions:**
+    
+    **1. Clear npm cache:**
+    ```bash
+    npm cache clean --force
+    npm install
+    ```
+    
+    **2. Delete node_modules and reinstall:**
+    ```bash
+    rm -rf node_modules package-lock.json
+    npm install
+    ```
+    
+    **3. Use legacy peer deps (if peer conflict):**
+    ```bash
+    npm install --legacy-peer-deps
+    ```
+    
+    **4. Try different Node version:**
+    ```bash
+    node --version  # Should be 16+
+    # Use nvm to switch versions if needed
+    ```
+    
+    **5. Use alternative package manager:**
+    ```bash
+    npm install -g pnpm
+    pnpm install
+    ```
+  </Accordion>
+
+  <Accordion title="Vite Dev Server Won't Start" icon="lightning-bolt">
+    **Error Messages:**
+    ```
+    Port 5173 is already in use
+    EADDRINUSE: address already in use
+    ```
+    
+    **Solutions:**
+    
+    **1. Kill process on port 5173:**
+    ```bash
+    # Windows
+    netstat -ano | findstr :5173
+    taskkill /PID <PID> /F
+    
+    # Linux/Mac
+    lsof -ti:5173 | xargs kill
+    ```
+    
+    **2. Use different port:**
+    ```bash
+    npm run dev -- --port 3000
+    ```
+    
+    **3. Check vite.config.js:**
+    ```javascript
+    export default defineConfig({
+      server: {
+        port: 5173,
+      }
+    })
+    ```
+  </Accordion>
+
+  <Accordion title="API Requests Fail from Frontend" icon="globe">
+    **Error in browser console:**
+    ```
+    Failed to fetch
+    Network Error
+    ERR_CONNECTION_REFUSED
+    ```
+    
+    **Solutions:**
+    
+    **1. Verify backend is running:**
+    ```bash
+    curl http://localhost:8000/health
+    ```
+    
+    **2. Check API URL in utils/api.js:**
+    ```javascript
+    const API_BASE_URL = 'http://localhost:8000/api';
+    ```
+    
+    **3. Update Vite proxy (if needed):**
+    ```javascript
+    // vite.config.js
+    export default defineConfig({
+      server: {
+        proxy: {
+          '/api': 'http://localhost:8000'
+        }
+      }
+    })
+    ```
+    
+    **4. Check for CORS errors:**
+    See "CORS Errors" section in Backend Issues.
+  </Accordion>
+
+  <Accordion title="Video Playback Issues" icon="play">
+    **Symptoms:**
+    - Video player shows black screen
+    - "Failed to load media" error
+    - Video downloads but won't play in browser
+    
+    **Solutions:**
+    
+    **1. Check video file exists:**
+    ```bash
+    ls -la backend/outputs/final/
+    ```
+    
+    **2. Verify video URL:**
+    ```javascript
+    // Should be: http://localhost:8000/api/video/{filename}
+    console.log(videoUrl);
+    ```
+    
+    **3. Test video endpoint directly:**
+    ```bash
+    # Should start downloading video
+    curl -I http://localhost:8000/api/video/your_video.mp4
+    ```
+    
+    **4. Check video format:**
+    ```bash
+    ffprobe backend/outputs/final/your_video.mp4
+    # Should show codec: h264, format: mp4
+    ```
+    
+    **5. Browser compatibility:**
+    - Ensure using H.264 codec (most compatible)
+    - Try different browser
+    - Check browser console for specific errors
+    
+    **6. Range requests support:**
+    The app uses range requests for video streaming (app.py:93-125). Verify headers:
+    ```
+    Accept-Ranges: bytes
+    Content-Type: video/mp4
+    ```
+  </Accordion>
+
+  <Accordion title="Build Errors (npm run build)" icon="hammer">
+    **Error Messages:**
+    ```
+    Transform failed with 1 error
+    Unexpected token
+    Module not found
+    ```
+    
+    **Solutions:**
+    
+    **1. Check for TypeScript errors:**
+    ```bash
+    npm run lint
+    ```
+    
+    **2. Clear Vite cache:**
+    ```bash
+    rm -rf node_modules/.vite
+    npm run build
+    ```
+    
+    **3. Fix import paths:**
+    ```javascript
+    // Ensure all imports use correct paths
+    import Home from './components/Home'  // Add .jsx if needed
+    ```
+    
+    **4. Check for dynamic imports:**
+    ```javascript
+    // Vite may need explicit chunks configuration
+    // See vite.config.js build.rollupOptions
+    ```
+    
+    **5. Increase Node memory:**
+    ```bash
+    NODE_OPTIONS=--max-old-space-size=4096 npm run build
+    ```
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## System & Environment Issues
+
+<AccordionGroup>
+  <Accordion title="Windows PATH Not Working" icon="windows">
+    **Symptom:** Command not found after adding to PATH
+    
+    **Solution:**
+    1. Close ALL terminal windows and IDEs
+    2. Open new terminal
+    3. Verify PATH:
+       ```bash
+       echo %PATH%
+       ```
+    4. If still not working, restart computer
+  </Accordion>
+
+  <Accordion title="Permission Denied Errors" icon="lock">
+    **Error:**
+    ```
+    PermissionError: [Errno 13] Permission denied
+    ```
+    
+    **Solutions:**
+    
+    1. Run as administrator (Windows)
+    2. Check file permissions:
+       ```bash
+       ls -la backend/outputs/
+       ```
+    3. Change ownership:
+       ```bash
+       chown -R $USER backend/outputs/
+       ```
+    4. Ensure antivirus isn't blocking
+  </Accordion>
+
+  <Accordion title="Disk Space Issues" icon="hard-drive">
+    **Symptom:** Video generation fails partway through
+    
+    **Check disk space:**
+    ```bash
+    df -h  # Linux/Mac
+    dir    # Windows
+    ```
+    
+    **Solution:**
+    - Ensure at least 2GB free space
+    - Clear old outputs:
+      ```bash
+      rm -rf backend/outputs/final/*.mp4
+      ```
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Debugging Tips
+
+### Enable Verbose Logging
+
+**Backend:**
+```python
+# Add to app.py
+import logging
+logging.basicConfig(level=logging.DEBUG)
+
+# Or for specific modules
+logging.getLogger("moviepy").setLevel(logging.DEBUG)
+```
+
+**Frontend:**
+```javascript
+// Add to useSSEProgress.jsx or api.js
+console.log('Debug:', { request, response, error });
+```
+
+### Check Network Requests
+
+1. Open browser DevTools (F12)
+2. Go to Network tab
+3. Trigger action (generate video)
+4. Inspect requests:
+   - Status codes (200, 404, 500)
+   - Response bodies
+   - Request headers
+
+### Monitor Backend Logs
+
+All progress updates are printed to terminal:
+```
+[14:30:45] 🚀 Starting generation...
+[14:30:47] 📝 Generating presentation content...
+[14:31:02] 🎤 Generating audio for slide 1/5...
+```
+
+Watch for errors or the last successful step.
+
+### Test Individual Components
+
+Test generators in isolation:
+
+```python
+# test_content_gen.py
+from generators.content_generator import ContentGenerator
+
+gen = ContentGenerator()
+result = gen.generate_content("Machine Learning", 3)
+print(result)
+```
+
+---
+
+## Getting Help
+
+If you're still stuck:
+
+1. **Check the logs** - Most issues leave error messages
+2. **Search existing issues** - [GitHub Issues](https://github.com/Kamal-Nayan-Kumar/AI-Video-Gen/issues)
+3. **Create a new issue** with:
+   - Error message (full traceback)
+   - Steps to reproduce
+   - System info (OS, Python version, etc.)
+   - What you've already tried
+
+<CardGroup cols={2}>
+  <Card title="Setup Guide" icon="rocket" href="/development/setup">
+    Return to development setup
+  </Card>
+  <Card title="Dependencies" icon="cube" href="/development/dependencies">
+    Review project dependencies
+  </Card>
+</CardGroup>

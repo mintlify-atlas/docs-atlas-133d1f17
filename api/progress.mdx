@@ -1,0 +1,191 @@
+---
+title: 'Track Progress'
+description: 'GET /api/progress/{generation_id} - Server-Sent Events (SSE) endpoint for real-time progress'
+---
+
+## Endpoint
+
+```
+GET /api/progress/{generation_id}
+```
+
+Streams real-time progress updates during video generation using Server-Sent Events (SSE).
+
+## Path Parameters
+
+<ParamField path="generation_id" type="string" required>
+  The generation ID derived from the sanitized topic name. 
+  
+  Example: `"Introduction_to_Machine_Learn"`
+  
+  See [Generate endpoint](/api/generate#generation-id) for ID format.
+</ParamField>
+
+## Response Format
+
+This endpoint returns a stream of Server-Sent Events. Each event contains JSON data:
+
+<ResponseField name="status" type="string">
+  Current status of the generation process.
+  
+  Possible values:
+  - `connected`: Initial connection established
+  - `waiting`: Waiting for generation to start
+  - `started`: Generation has begun
+  - `generating_content`: Creating presentation structure
+  - `generating_scripts`: Writing narration scripts
+  - `generating_audio`: Generating voice narration
+  - `combining_audio`: Merging audio tracks
+  - `generating_media`: Creating slide visuals
+  - `generating_animation`: Rendering animations
+  - `fetching_image`: Downloading images
+  - `generating_slide`: Creating text slides
+  - `composing_video`: Combining slides and audio
+  - `completed`: Video generation complete
+  - `error`: An error occurred
+  - `done`: Stream ended (final message)
+</ResponseField>
+
+<ResponseField name="progress" type="integer">
+  Progress percentage from 0 to 100.
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Human-readable status message describing the current step.
+</ResponseField>
+
+<ResponseField name="timestamp" type="string">
+  Timestamp of the update in `HH:MM:SS` format.
+</ResponseField>
+
+## SSE Connection Details
+
+### Headers
+
+The response includes these headers for proper SSE streaming:
+
+```
+Content-Type: text/event-stream
+Cache-Control: no-cache, no-transform
+Connection: keep-alive
+X-Accel-Buffering: no
+Content-Encoding: none
+```
+
+<Note>
+The `Content-Encoding: none` header is critical for SSE to work properly. Without it, some proxies and CDNs may buffer the response.
+</Note>
+
+### Update Frequency
+
+- Updates are sent when progress changes
+- Heartbeat messages sent every 2 seconds to keep connection alive
+- Connection timeout: 5 minutes (600 retries × 0.5s)
+
+### Connection Lifecycle
+
+1. **Initial Connection**: Sends `connected` status immediately
+2. **Waiting Phase**: If generation hasn't started, sends `waiting` status for first 5 seconds
+3. **Progress Updates**: Streams status changes as generation progresses
+4. **Completion**: Sends final status (`completed` or `error`) followed by `done` message
+5. **Stream Closure**: Connection closes after completion or timeout
+
+## Example Usage
+
+### JavaScript (EventSource)
+
+```javascript
+const generationId = 'Introduction_to_Machine_Learn';
+const eventSource = new EventSource(
+  `http://localhost:8000/api/progress/${generationId}`
+);
+
+eventSource.onmessage = (event) => {
+  const data = JSON.parse(event.data);
+  console.log(`[${data.timestamp}] ${data.progress}% - ${data.message}`);
+  
+  if (data.status === 'completed') {
+    console.log('Video generation complete!');
+    eventSource.close();
+  } else if (data.status === 'error') {
+    console.error('Generation failed:', data.message);
+    eventSource.close();
+  }
+};
+
+eventSource.onerror = (error) => {
+  console.error('SSE connection error:', error);
+  eventSource.close();
+};
+```
+
+### cURL
+
+```bash
+curl -N http://localhost:8000/api/progress/Introduction_to_Machine_Learn
+```
+
+<Note>
+The `-N` flag disables buffering, which is required for streaming responses.
+</Note>
+
+## Example Event Stream
+
+```
+data: {"status":"connected","progress":0,"message":"📡 Connected to progress stream","timestamp":"14:23:15"}
+
+data: {"status":"started","progress":0,"message":"🚀 Starting generation...","timestamp":"14:23:15"}
+
+data: {"status":"generating_content","progress":10,"message":"📝 Generating presentation content...","timestamp":"14:23:16"}
+
+data: {"status":"generating_scripts","progress":20,"message":"📜 Generating voice scripts...","timestamp":"14:23:18"}
+
+data: {"status":"generating_audio","progress":30,"message":"🎤 Generating audio for slide 1/5...","timestamp":"14:23:20"}
+
+data: {"status":"generating_audio","progress":33,"message":"✅ Generated audio for slide 1/5 (12.3s)","timestamp":"14:23:25"}
+
+data: {"status":"composing_video","progress":85,"message":"🎞️ Composing final video with audio...","timestamp":"14:24:30"}
+
+data: {"status":"completed","progress":100,"message":"✅ Video generation complete!","timestamp":"14:24:45"}
+
+data: {"status":"done","progress":100,"message":"✅ Stream ended","timestamp":"14:24:45"}
+```
+
+## Progress Milestones
+
+| Progress | Stage | Description |
+|----------|-------|-------------|
+| 0% | Started | Generation initialized |
+| 10% | Content | Presentation structure created |
+| 20% | Scripts | Narration scripts generated |
+| 30-49% | Audio | Voice narration per slide |
+| 50-80% | Visuals | Slides, images, and animations |
+| 85-95% | Composition | Final video assembly |
+| 100% | Complete | Video ready |
+
+## Error Handling
+
+### Generation Not Found
+
+If the generation ID doesn't exist, the stream will send `waiting` status messages for the first 5 seconds, then continue checking until timeout.
+
+### Generation Errors
+
+When generation fails, the stream sends an `error` status:
+
+```json
+{
+  "status": "error",
+  "progress": 0,
+  "message": "❌ Error: Failed to generate content",
+  "timestamp": "14:23:30"
+}
+```
+
+Followed by a `done` message to close the stream.
+
+## Connection Timeout
+
+<Note>
+The SSE connection will timeout after 5 minutes (300 seconds) of waiting. Ensure your client reconnects if the connection drops unexpectedly.
+</Note>

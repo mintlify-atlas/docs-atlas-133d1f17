@@ -1,0 +1,437 @@
+---
+title: Video Composition
+description: Synchronize slides, animations, images, and audio into a final MP4 video using FFmpeg and MoviePy
+---
+
+## Overview
+
+Video Composition is the final stage where all generated assets (slides, animations, images, audio) are assembled into a single, synchronized video file. The system uses **MoviePy** (a Python wrapper for FFmpeg) to handle timeline management, video concatenation, and audio synchronization.
+
+## How It Works
+
+### High-Level Process
+
+1. **Load Slide Clips**: Each slide becomes a video clip (either image or animation)
+2. **Apply Durations**: Clips are timed according to narration length
+3. **Composite Animations**: Manim videos are overlaid onto slide templates
+4. **Concatenate Clips**: All slides are joined sequentially
+5. **Sync Audio**: Complete narration audio is attached to video
+6. **Export Final Video**: Render as MP4 with H.264 video and AAC audio
+
+<Info>
+The composition process ensures perfect **audio-video synchronization** by using narration timing from the script data to set clip durations.
+</Info>
+
+## Timeline Synchronization
+
+### Slide Timing Calculation
+
+Each slide's duration is determined by its narration timing:
+
+```python
+for slide in content_data['slides']:
+    slide_num = slide['slide_number']
+    
+    # Find corresponding script entry
+    slide_script = next(
+        (s for s in script_data['slide_scripts'] 
+         if s['slide_number'] == slide_num),
+        None
+    )
+    
+    # Calculate duration from timeline
+    duration = slide_script['end_time'] - slide_script['start_time']
+    print(f"Processing slide {slide_num}: {duration:.1f}s")
+```
+
+### Timeline Structure
+
+The `script_data` contains precise timing information:
+
+```json
+{
+  "slide_scripts": [
+    {
+      "slide_number": 1,
+      "narration_text": "Welcome to our presentation...",
+      "start_time": 0.0,
+      "end_time": 5.2,
+      "duration": 5.2
+    },
+    {
+      "slide_number": 2,
+      "narration_text": "In this section we explore...",
+      "start_time": 5.2,
+      "end_time": 11.7,
+      "duration": 6.5
+    }
+  ],
+  "total_duration": 35.8
+}
+```
+
+<Tip>
+The system automatically warns if video duration and audio duration differ by more than 0.5 seconds, helping catch synchronization issues early.
+</Tip>
+
+## Slide Processing
+
+### Creating Slide Clips
+
+Each slide is converted to a video clip:
+
+```python
+def create_slide_video(self, slide_path: str, duration: float) -> VideoFileClip:
+    # Handle missing slides gracefully
+    if not slide_path or not Path(slide_path).exists():
+        print(f"⚠️ Slide path not found, creating blank slide")
+        return ColorClip(size=(1920, 1080), color=(20, 20, 40), duration=duration)
+    
+    # Video files (animations)
+    if slide_path.endswith(('.mp4', '.mov', '.avi')):
+        video_clip = VideoFileClip(slide_path)
+        
+        # Adjust duration to match narration
+        if video_clip.duration < duration:
+            video_clip = video_clip.with_duration(duration)
+        elif video_clip.duration > duration:
+            video_clip = video_clip.subclipped(0, duration)
+        
+        return video_clip
+    
+    # Image files
+    else:
+        return ImageClip(slide_path, duration=duration)
+```
+
+### Handling Different Media Types
+
+| Media Type | Processing |
+|------------|------------|
+| **Static Image** | Creates ImageClip with specified duration |
+| **Animation Video** | Loads VideoFileClip, adjusts duration |
+| **Animation + Slide** | Composites animation onto slide template |
+| **Missing Asset** | Generates blank colored clip |
+
+## Animation Compositing
+
+### Overlay Process
+
+When a slide has both a base slide image and an animation, they are composited:
+
+```python
+def composite_animation_on_slide(self, slide_image_path: str, 
+                                 animation_video_path: str, 
+                                 duration: float) -> VideoFileClip:
+    # Load base slide (static image)
+    slide_clip = ImageClip(slide_image_path, duration=duration)
+    
+    # Load animation video
+    animation_clip = VideoFileClip(animation_video_path)
+    
+    # STEP 1: Adjust animation duration
+    if animation_clip.duration < duration:
+        # Loop animation to fill slide duration
+        num_loops = int(duration / animation_clip.duration) + 1
+        looped_clips = [animation_clip] * num_loops
+        animation_adjusted = concatenate_videoclips(looped_clips, method="compose")
+        animation_adjusted = animation_adjusted.subclipped(0, duration)
+    else:
+        # Trim animation to slide duration
+        animation_adjusted = animation_clip.subclipped(0, duration)
+    
+    # STEP 2: Resize and position animation
+    animation_final = animation_adjusted.resized(new_size=(850, 700))
+    animation_final = animation_final.with_position((1010, 250))
+    
+    # STEP 3: Composite layers
+    composite = CompositeVideoClip(
+        [slide_clip, animation_final],
+        size=(1920, 1080)
+    )
+    
+    return composite
+```
+
+<Warning>
+Animation position `(1010, 250)` and size `(850, 700)` are hardcoded to match the slide template placeholder. If you customize slide templates, update these values in `video_composer.py:362-372`.
+</Warning>
+
+### Animation Duration Handling
+
+**Scenario 1: Animation shorter than narration**
+- **Action**: Loop animation seamlessly
+- **Example**: 3s animation, 9s narration → animation plays 3 times
+
+**Scenario 2: Animation longer than narration**
+- **Action**: Trim animation to match narration
+- **Example**: 8s animation, 5s narration → first 5s used
+
+**Scenario 3: Exact match**
+- **Action**: Use animation as-is
+
+## Concatenation
+
+### Joining Slide Clips
+
+All processed slides are concatenated sequentially:
+
+```python
+print(f"🔗 Concatenating {len(slide_clips)} slide clips...")
+final_video = concatenate_videoclips(slide_clips, method="compose")
+print(f"Total video duration: {final_video.duration:.1f}s")
+```
+
+**Concatenation method: `compose`**
+- Ensures consistent resolution across clips
+- Handles clips of different types (image, video, composite)
+- Maintains frame rate throughout
+
+<Info>
+The `method="compose"` parameter ensures all clips are rendered at the same resolution (1920x1080) even if source dimensions vary.
+</Info>
+
+## Audio Integration
+
+### Attaching Narration
+
+The complete audio track is synced to the video:
+
+```python
+if audio_path and Path(audio_path).exists():
+    print(f"🎵 Adding audio track...")
+    audio = AudioFileClip(audio_path)
+    print(f"Audio duration: {audio.duration:.1f}s")
+    
+    # Warn about synchronization issues
+    if abs(final_video.duration - audio.duration) > 0.5:
+        print(f"⚠️ Warning: Video duration ({final_video.duration:.1f}s) "
+              f"doesn't match audio ({audio.duration:.1f}s)")
+    
+    final_video = final_video.with_audio(audio)
+```
+
+### Audio Sync Validation
+
+- **Tolerance**: ±0.5 seconds
+- **Warning Trigger**: Duration mismatch exceeds tolerance
+- **Common Causes**: 
+  - Slide durations don't match audio chunks
+  - Audio generation had truncation or errors
+  - Manual edits to slide timing
+
+## FFmpeg Export
+
+### Final Rendering
+
+The composed video is exported using FFmpeg via MoviePy:
+
+```python
+topic_name = self.sanitize_filename(content_data['topic'], max_length=30)
+output_path = Config.FINAL_DIR / f"{topic_name}_final.mp4"
+
+print(f"📹 Writing final video to: {output_path}")
+print(f"Resolution: 1920x1080")
+print(f"FPS: {Config.MANIM_FPS}")
+print(f"Codec: libx264 + aac")
+
+final_video.write_videofile(
+    str(output_path),
+    fps=Config.MANIM_FPS,        # 30 FPS default
+    codec='libx264',             # H.264 video codec
+    audio_codec='aac',           # AAC audio codec
+    preset='medium',             # Encoding speed/quality balance
+    bitrate='5000k',             # 5 Mbps video bitrate
+    audio_bitrate='192k'         # 192 kbps audio bitrate
+)
+```
+
+### Export Configuration
+
+| Parameter | Value | Purpose |
+|-----------|-------|----------|
+| **fps** | 30 | Frames per second (matches Manim renders) |
+| **codec** | libx264 | H.264 video compression (widely compatible) |
+| **audio_codec** | aac | Advanced Audio Coding (industry standard) |
+| **preset** | medium | Balanced encoding speed vs quality |
+| **bitrate** | 5000k | 5 Mbps video quality (HD quality) |
+| **audio_bitrate** | 192k | High-quality audio (near CD quality) |
+
+### FFmpeg Presets
+
+You can adjust the `preset` parameter for different use cases:
+
+- **ultrafast**: Fastest encoding, largest file size
+- **fast**: Quick encoding, larger file
+- **medium**: Balanced (default)
+- **slow**: Better compression, smaller file
+- **veryslow**: Best compression, takes longest
+
+<Tip>
+For faster iteration during development, use `preset='fast'` and `bitrate='2000k'`. Switch to `preset='medium'` or `'slow'` for final production videos.
+</Tip>
+
+## Output Structure
+
+### Final Video Path
+
+```
+workspace/source/data/final/<topic_name>_final.mp4
+```
+
+**Filename sanitization** removes special characters:
+- Spaces → Underscores
+- Colons, slashes → Removed
+- Quotes, question marks → Removed
+- Max 30 characters
+
+### Video Specifications
+
+- **Container**: MP4 (MPEG-4 Part 14)
+- **Video Codec**: H.264 (AVC)
+- **Audio Codec**: AAC
+- **Resolution**: 1920x1080 (Full HD)
+- **Aspect Ratio**: 16:9
+- **Frame Rate**: 30 FPS
+- **Typical File Size**: 50-200 MB for 1-5 minute video
+
+## Cleanup
+
+### Resource Management
+
+After export, all video clips are properly closed to free memory:
+
+```python
+print(f"🧹 Cleaning up video clips...")
+for clip in slide_clips:
+    clip.close()
+final_video.close()
+if audio_path and Path(audio_path).exists():
+    audio.close()
+
+print(f"✅ Final video saved: {output_path}")
+```
+
+<Warning>
+Failure to close clips can cause memory leaks, especially when generating multiple videos in succession. Always close clips after rendering.
+</Warning>
+
+## Error Handling
+
+### Common Issues
+
+**No slide clips created:**
+```python
+if not slide_clips:
+    raise ValueError("No slide clips were created")
+```
+- **Cause**: All slides missing visual assets
+- **Solution**: Check that images/animations were generated
+
+**Audio-video duration mismatch:**
+```python
+if abs(final_video.duration - audio.duration) > 0.5:
+    print(f"⚠️ Warning: Duration mismatch detected")
+```
+- **Cause**: Slide timing doesn't match audio
+- **Solution**: Regenerate audio or adjust slide durations
+
+**FFmpeg encoding failure:**
+- **Cause**: Missing FFmpeg installation or codec issues
+- **Solution**: Verify FFmpeg with `ffmpeg -version`
+
+## Performance Optimization
+
+### Rendering Speed Tips
+
+1. **Use Lower Quality During Testing**
+   ```python
+   bitrate='2000k',  # Instead of 5000k
+   preset='fast'     # Instead of 'medium'
+   ```
+
+2. **Process Slides in Parallel** (Future Enhancement)
+   - Current: Sequential processing
+   - Potential: Parallel clip creation with threading
+
+3. **Cache Intermediate Renders**
+   - Reuse slide clips if content hasn't changed
+   - Skip regeneration of unchanged animations
+
+### Memory Management
+
+- **Large Presentations**: Close clips immediately after concatenation
+- **Multiple Videos**: Run garbage collection between generations
+- **Animation Loops**: Use `concatenate_videoclips` instead of manual looping
+
+<Tip>
+For presentations with 10+ slides, monitor RAM usage. MoviePy loads all clips into memory before concatenation.
+</Tip>
+
+## Customization Options
+
+### Output Resolution
+
+Change resolution in `config.py`:
+
+```python
+VIDEO_RESOLUTION = (1920, 1080)  # Full HD (default)
+# VIDEO_RESOLUTION = (1280, 720)   # HD
+# VIDEO_RESOLUTION = (3840, 2160)  # 4K
+```
+
+Update all references in code:
+```python
+ColorClip(size=Config.VIDEO_RESOLUTION, ...)
+CompositeVideoClip([...], size=Config.VIDEO_RESOLUTION)
+```
+
+### Animation Placement
+
+Modify animation position/size in `video_composer.py:361-362`:
+
+```python
+# Default: Right side of slide
+animation_final = animation_adjusted.resized(new_size=(850, 700))
+animation_final = animation_final.with_position((1010, 250))
+
+# Alternative: Centered
+animation_final = animation_adjusted.resized(new_size=(1200, 800))
+animation_final = animation_final.with_position(('center', 'center'))
+```
+
+## Troubleshooting
+
+### Video Export Fails
+
+**Symptom**: Error during `write_videofile()`
+
+**Solutions:**
+- Verify FFmpeg is installed: `ffmpeg -version`
+- Check disk space (exports need 2-3x final size temporarily)
+- Ensure output directory exists and is writable
+- Try different preset: `preset='ultrafast'`
+
+### Audio Not Playing
+
+**Symptom**: Video renders but no audio in final MP4
+
+**Solutions:**
+- Verify audio file exists and is valid WAV
+- Check audio codec support: use `'aac'` not `'mp3'`
+- Test audio separately: `ffplay <audio_path>`
+
+### Animations Mispositioned
+
+**Symptom**: Animation appears in wrong location or cut off
+
+**Solutions:**
+- Verify slide template dimensions (should have placeholder)
+- Adjust position coordinates in `composite_animation_on_slide()`
+- Check animation resolution matches expected size (850x700)
+
+## Related Features
+
+- [Content Generation](/features/content-generation) - Provides slide structure and timing requirements
+- [Voice Narration](/features/voice-narration) - Generates audio track that drives timeline
+- [Visual Media](/features/visual-media) - Creates animation and image assets for composition

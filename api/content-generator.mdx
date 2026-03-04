@@ -1,0 +1,242 @@
+---
+title: ContentGenerator
+description: Generates structured presentation content using Google's Gemini AI model
+---
+
+## Overview
+
+The `ContentGenerator` class is responsible for creating the initial presentation structure. It uses Google's Gemini AI to generate a complete slide-by-slide breakdown including titles, content text, and metadata about visual needs (images/animations).
+
+## Class Definition
+
+```python
+from generators.content_generator import ContentGenerator
+
+content_gen = ContentGenerator()
+```
+
+### Constructor
+
+```python
+def __init__(self)
+```
+
+Initializes the content generator with Google Gemini AI configuration.
+
+**Configuration:**
+- **Model**: Uses `Config.GEMINI_MODEL` (configured in environment)
+- **Response Format**: JSON (`application/json` MIME type)
+- **API Key**: Configured via `Config.GEMINI_API_KEY`
+
+## Methods
+
+### generate_content
+
+Generates complete presentation structure with slide content and visual requirements.
+
+```python
+def generate_content(topic: str, num_slides: int = 5) -> Dict
+```
+
+<ParamField path="topic" type="string" required>
+  The presentation topic or subject matter
+</ParamField>
+
+<ParamField path="num_slides" type="int" default="5">
+  Number of slides to generate
+</ParamField>
+
+<ResponseField name="return" type="Dict">
+  Presentation content structure with slides data
+</ResponseField>
+
+**Returns structure:**
+
+```json
+{
+  "topic": "Newton's Laws of Motion",
+  "total_slides": 5,
+  "slides": [
+    {
+      "slide_number": 1,
+      "title": "Introduction to Newton's Laws",
+      "content_text": "Overview of the three fundamental laws",
+      "needs_image": false,
+      "image_keyword": "",
+      "needs_animation": false,
+      "animation_description": "",
+      "duration": 6.0
+    }
+  ]
+}
+```
+
+<ResponseField name="topic" type="string">
+  The presentation topic
+</ResponseField>
+
+<ResponseField name="total_slides" type="int">
+  Total number of slides generated
+</ResponseField>
+
+<ResponseField name="slides" type="array">
+  Array of slide objects with content and metadata
+  
+  <Expandable title="Slide Object Properties">
+    <ResponseField name="slide_number" type="int">
+      Sequential slide number (1-indexed)
+    </ResponseField>
+    
+    <ResponseField name="title" type="string">
+      Slide title
+    </ResponseField>
+    
+    <ResponseField name="content_text" type="string">
+      Main content text for the slide (2-4 sentences)
+    </ResponseField>
+    
+    <ResponseField name="needs_image" type="boolean">
+      Whether this slide requires an image (mutually exclusive with animation)
+    </ResponseField>
+    
+    <ResponseField name="image_keyword" type="string">
+      Search keyword for image if `needs_image` is true
+    </ResponseField>
+    
+    <ResponseField name="needs_animation" type="boolean">
+      Whether this slide requires a Manim animation (mutually exclusive with image)
+    </ResponseField>
+    
+    <ResponseField name="animation_description" type="string">
+      Detailed description of what to animate if `needs_animation` is true
+    </ResponseField>
+    
+    <ResponseField name="duration" type="float">
+      Estimated slide duration in seconds (4-10 seconds typical)
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Data Models
+
+### SlideContent
+
+Pydantic model representing individual slide content.
+
+```python
+class SlideContent(BaseModel):
+    slide_number: int
+    title: str
+    content_text: str
+    needs_image: bool
+    image_keyword: str = ""
+    needs_animation: bool
+    animation_description: str = ""
+    duration: float
+```
+
+**Validation Rules:**
+- **Mutual Exclusivity**: A slide cannot have both `needs_animation=True` and `needs_image=True`
+- **Auto-correction**: If both flags are true, the generator prioritizes animation and clears image fields
+
+### PresentationContent
+
+Pydantic model for complete presentation structure.
+
+```python
+class PresentationContent(BaseModel):
+    topic: str
+    total_slides: int
+    slides: List[SlideContent]
+```
+
+## Usage Example
+
+From `backend/app.py:242-243`:
+
+```python
+# Step 1: Generate PPT content structure
+update_progress(generation_id, 10, "generating_content", 
+                "📝 Generating presentation content...")
+
+content_gen = ContentGenerator()
+content_data = content_gen.generate_content(topic, request.num_slides)
+```
+
+**Output statistics:**
+
+```python
+total = len(content_data['slides'])
+text_only = sum(1 for s in content_data['slides'] 
+               if not s.get('needs_image') and not s.get('needs_animation'))
+with_image = sum(1 for s in content_data['slides'] if s.get('needs_image'))
+with_animation = sum(1 for s in content_data['slides'] if s.get('needs_animation'))
+
+print(f"Slide breakdown: Text={text_only} Image={with_image} Animation={with_animation}")
+```
+
+## Content Generation Rules
+
+The generator follows specific rules enforced via the AI prompt:
+
+1. **Text-First Design**: 70-80% of slides should be text-only
+2. **Image Usage**: Sparingly for people, places, objects, and static diagrams
+3. **Animation Usage**: Very rarely (1-2 max) for concepts requiring motion visualization
+4. **Mutual Exclusivity**: Slides can have either image OR animation, never both
+5. **Duration Estimation**: Based on content complexity (typically 4-10 seconds per slide)
+
+## File Persistence
+
+Generated content is automatically saved to:
+
+```
+Config.SLIDES_DIR / "{topic_sanitized}_content.json"
+```
+
+**Filename Sanitization:**
+- Max 30 characters from topic
+- Replaces spaces with underscores
+- Removes special characters (`:`, `/`, etc.)
+
+## Error Handling
+
+The generator includes comprehensive error handling:
+
+```python
+try:
+    response = self.model.generate_content(prompt)
+    text = response.text.strip()
+    
+    # Clean markdown formatting
+    text = text.replace('json', '').replace('`', '').strip()
+    
+    # Parse and validate JSON
+    content_data = json.loads(text)
+    
+    # Add missing fields if needed
+    if 'topic' not in content_data:
+        content_data['topic'] = topic
+    if 'total_slides' not in content_data:
+        content_data['total_slides'] = len(content_data['slides'])
+    
+    # Fix mutual exclusivity violations
+    for slide in content_data['slides']:
+        if slide.get('needs_animation') and slide.get('needs_image'):
+            if slide.get('animation_description'):
+                slide['needs_image'] = False
+                slide['image_keyword'] = ""
+            else:
+                slide['needs_animation'] = False
+                slide['animation_description'] = ""
+    
+except Exception as e:
+    print(f"Content generation error: {e}")
+    traceback.print_exc()
+    raise
+```
+
+## Related Components
+
+- [ScriptGenerator](/api/script-generator) - Generates narration scripts from content
+- [ManimGenerator](/api/manim-generator) - Creates animations for slides marked with `needs_animation=True`
+- [VoiceGenerator](/api/voice-generator) - Fetches images for slides marked with `needs_image=True`

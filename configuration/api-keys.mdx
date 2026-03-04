@@ -1,0 +1,419 @@
+---
+title: 'API Keys Setup'
+description: 'Learn how to obtain and configure API keys for Gemini, Sarvam AI, and Unsplash'
+---
+
+## Overview
+
+The AI Video Presentation Generator requires three API keys to function:
+
+1. **GEMINI_API_KEY** - For AI content and script generation
+2. **SARVAM_API_KEY** - For multi-language voice synthesis
+3. **UNSPLASH_ACCESS_KEY** - For high-quality presentation images
+
+This guide provides step-by-step instructions for obtaining each API key.
+
+## Gemini API Key
+
+### What It's Used For
+
+The Gemini API key powers the core AI features:
+- **Content Generation**: Creates structured presentation content based on your topic
+- **Script Generation**: Generates natural narration scripts for each slide
+- **Smart Visuals**: Determines which slides need animations or images
+
+Used by: `ContentGenerator` (`content_generator.py`) and `ScriptGenerator` (`script_generator.py`)
+
+### How to Get Your Key
+
+<Steps>
+  <Step title="Visit Google AI Studio">
+    Go to [Google AI Studio](https://makersuite.google.com/app/apikey)
+    
+    Sign in with your Google account.
+  </Step>
+  
+  <Step title="Create API Key">
+    Click **"Get API Key"** or **"Create API Key"**
+    
+    Select or create a Google Cloud project.
+  </Step>
+  
+  <Step title="Copy Your Key">
+    Copy the generated API key (format: `AIza...`)
+    
+    Store it securely - you won't be able to see it again.
+  </Step>
+  
+  <Step title="Add to .env File">
+    Add to your `backend/.env` file:
+    ```bash
+    GEMINI_API_KEY=AIzaSyC...
+    ```
+  </Step>
+</Steps>
+
+### Model Configuration
+
+The system uses the **Gemini 2.5 Flash** model by default, configured in `config.py:29`:
+
+```python
+GEMINI_MODEL = "gemini-2.5-flash"
+```
+
+This model provides the best balance of speed and quality for content generation.
+
+### Pricing & Limits
+
+<Info>
+  Gemini API offers a **free tier** with generous limits:
+  - 15 requests per minute
+  - 1 million tokens per minute
+  - 1,500 requests per day
+  
+  Perfect for development and small-scale usage.
+</Info>
+
+<Warning>
+  Monitor your usage in [Google Cloud Console](https://console.cloud.google.com/) to avoid unexpected charges if you exceed the free tier.
+</Warning>
+
+## Sarvam API Key
+
+### What It's Used For
+
+The Sarvam AI API key enables multi-language voice generation:
+- **Text-to-Speech**: Converts narration scripts to natural-sounding audio
+- **Multi-Language Support**: Supports 11+ Indian languages
+- **Voice Customization**: Different speakers and voice characteristics
+
+Used by: `VoiceGenerator` (`voice_generator.py`)
+
+### How to Get Your Key
+
+<Steps>
+  <Step title="Visit Sarvam AI">
+    Go to [Sarvam AI Platform](https://www.sarvam.ai/)
+    
+    Click **"Get Started"** or **"Sign Up"**
+  </Step>
+  
+  <Step title="Create Account">
+    Sign up with your email or GitHub account
+    
+    Verify your email address
+  </Step>
+  
+  <Step title="Access Developer Dashboard">
+    Navigate to the API Dashboard or Developer Console
+    
+    Find the **"API Keys"** section
+  </Step>
+  
+  <Step title="Generate API Key">
+    Click **"Create New API Key"**
+    
+    Copy your API subscription key
+  </Step>
+  
+  <Step title="Add to .env File">
+    Add to your `backend/.env` file:
+    ```bash
+    SARVAM_API_KEY=your_sarvam_key_here
+    SARVAM_TTS_URL=https://api.sarvam.ai/text-to-speech
+    SARVAM_MODEL=bulbul:v2
+    ```
+  </Step>
+</Steps>
+
+### Available Models
+
+Sarvam AI offers two TTS model versions:
+
+<CodeGroup>
+```bash Stable (Recommended)
+SARVAM_MODEL=bulbul:v2
+```
+
+```bash Beta (Latest Features)
+SARVAM_MODEL=bulbul:v3-beta
+```
+</CodeGroup>
+
+**Recommendation**: Use `bulbul:v2` for production. The v3-beta model may have breaking changes.
+
+### Supported Speakers
+
+The system maps languages to appropriate voice speakers:
+
+| Language | Speaker | Voice Description |
+|----------|---------|-------------------|
+| English  | anushka | Indian English Female |
+| Hindi    | manisha | Hindi Female |
+| Kannada  | vidya   | Kannada Female |
+| Telugu   | arya    | Telugu Female |
+
+Configured in `config.py:40-45`. See [Language Options](/configuration/language-options) for all supported languages.
+
+### API Request Format
+
+The system sends requests with these parameters (from `voice_generator.py:26-36`):
+
+```json
+{
+  "inputs": ["narration text"],
+  "target_language_code": "en-IN",
+  "speaker": "anushka",
+  "pitch": 0,
+  "pace": 1.0,
+  "loudness": 1.5,
+  "speech_sample_rate": 22050,
+  "enable_preprocessing": true,
+  "model": "bulbul:v2"
+}
+```
+
+### Pricing & Limits
+
+<Info>
+  Check [Sarvam AI Pricing](https://www.sarvam.ai/pricing) for current rates and limits.
+  
+  Most plans include a free tier for testing and development.
+</Info>
+
+## Unsplash Access Key
+
+### What It's Used For
+
+The Unsplash API key provides access to high-quality images:
+- **Image Fetching**: Downloads relevant images based on slide content
+- **Visual Enhancement**: Adds professional photography to presentations
+- **Smart Selection**: AI-determined image keywords for relevance
+
+Used by: `ImageFetcher` (`image_fetcher.py`)
+
+### How to Get Your Key
+
+<Steps>
+  <Step title="Visit Unsplash Developers">
+    Go to [Unsplash Developers](https://unsplash.com/developers)
+    
+    Sign in or create an Unsplash account
+  </Step>
+  
+  <Step title="Create New Application">
+    Click **"Register as a Developer"** (if first time)
+    
+    Then click **"New Application"**
+  </Step>
+  
+  <Step title="Accept Terms">
+    Read and accept the API Terms and Guidelines
+    
+    Agree to follow Unsplash's usage policies
+  </Step>
+  
+  <Step title="Fill Application Details">
+    Provide application information:
+    - **Application name**: "AI Video Presentation Generator"
+    - **Description**: Describe your use case
+    - Accept terms of service
+  </Step>
+  
+  <Step title="Copy Access Key">
+    After creation, copy your **Access Key**
+    
+    Note: There's also a Secret Key - you only need the Access Key
+  </Step>
+  
+  <Step title="Add to .env File">
+    Add to your `backend/.env` file:
+    ```bash
+    UNSPLASH_ACCESS_KEY=your_unsplash_access_key_here
+    ```
+  </Step>
+</Steps>
+
+### Usage Guidelines
+
+<Warning>
+  **Important**: When using Unsplash images, you must:
+  - Credit photographers when required
+  - Follow Unsplash's [API Guidelines](https://help.unsplash.com/en/articles/2511245-unsplash-api-guidelines)
+  - Respect rate limits (50 requests/hour for demo apps)
+</Warning>
+
+### Rate Limits
+
+| Plan | Requests per Hour |
+|------|-------------------|
+| Demo | 50 |
+| Production | 5,000 |
+
+For development, the Demo plan is sufficient. Apply for Production access for deployed applications.
+
+## Security Best Practices
+
+### Protecting Your API Keys
+
+<AccordionGroup>
+  <Accordion title="Never Commit .env Files" icon="git">
+    **Critical**: Never commit `.env` files to version control.
+    
+    Add to `.gitignore`:
+    ```gitignore
+    .env
+    .env.local
+    .env.*.local
+    ```
+    
+    ✅ Commit: `.env.example` (with placeholder values)
+    ❌ Never commit: `.env` (with actual keys)
+  </Accordion>
+  
+  <Accordion title="Use Environment Variables" icon="server">
+    Always load keys from environment variables, never hardcode:
+    
+    ❌ Bad:
+    ```python
+    api_key = "AIzaSyC_actual_key_here"
+    ```
+    
+    ✅ Good:
+    ```python
+    api_key = os.getenv("GEMINI_API_KEY")
+    ```
+  </Accordion>
+  
+  <Accordion title="Restrict API Key Permissions" icon="lock">
+    - **Gemini**: Restrict to specific APIs in Google Cloud Console
+    - **Sarvam**: Set usage limits if available
+    - **Unsplash**: Regenerate keys if exposed
+    
+    Review permissions regularly and use least-privilege principle.
+  </Accordion>
+  
+  <Accordion title="Rotate Keys Regularly" icon="rotate">
+    Best practices:
+    - Rotate keys every 90 days
+    - Immediately rotate if exposed
+    - Keep backup keys during rotation
+    - Update all environments after rotation
+  </Accordion>
+  
+  <Accordion title="Monitor Usage" icon="chart-line">
+    Regularly check API usage dashboards:
+    - Detect unusual activity
+    - Track costs and limits
+    - Identify optimization opportunities
+    - Set up alerts for threshold breaches
+  </Accordion>
+</AccordionGroup>
+
+### What to Do If Keys Are Exposed
+
+<Warning>
+  If you accidentally commit API keys to a public repository:
+  
+  1. **Immediately revoke** the exposed keys
+  2. **Generate new keys** from respective platforms
+  3. **Update** your `.env` file with new keys
+  4. **Remove** sensitive data from Git history using tools like BFG Repo-Cleaner
+  5. **Notify** the API provider if required
+</Warning>
+
+## Verification
+
+### Test Your Configuration
+
+Verify all API keys are correctly configured:
+
+```bash
+cd backend
+python -c "
+from config import Config
+print('Gemini API Key:', 'Configured ✓' if Config.GEMINI_API_KEY else 'Missing ✗')
+print('Sarvam API Key:', 'Configured ✓' if Config.SARVAM_API_KEY else 'Missing ✗')
+print('Unsplash Key:', 'Configured ✓' if Config.UNSPLASH_ACCESS_KEY else 'Missing ✗')
+"
+```
+
+Expected output:
+```
+Gemini API Key: Configured ✓
+Sarvam API Key: Configured ✓
+Unsplash Key: Configured ✓
+```
+
+### Test API Connectivity
+
+Start the backend server and check the health endpoint:
+
+```bash
+cd backend
+python app.py
+```
+
+In another terminal:
+```bash
+curl http://localhost:8000/health
+```
+
+Should return: `{"status":"healthy"}`
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Invalid API Key Error">
+    **Problem**: "Invalid API key" or "Unauthorized" errors
+    
+    **Solutions**:
+    - Verify the key is copied correctly (no extra spaces)
+    - Check the key hasn't expired or been revoked
+    - Ensure the key has proper permissions enabled
+    - Try regenerating the key
+  </Accordion>
+  
+  <Accordion title="Rate Limit Exceeded">
+    **Problem**: "Rate limit exceeded" or "429 Too Many Requests"
+    
+    **Solutions**:
+    - Wait for the rate limit window to reset
+    - Reduce the frequency of requests
+    - Upgrade to a higher-tier plan
+    - Implement request caching
+  </Accordion>
+  
+  <Accordion title="Environment Variables Not Loading">
+    **Problem**: Config shows `None` for API keys
+    
+    **Solutions**:
+    - Verify `.env` file is in the `backend/` directory
+    - Check file is named exactly `.env` (not `.env.txt`)
+    - Ensure no spaces around `=` in `.env` file
+    - Restart the backend server after changes
+    - Check file encoding (should be UTF-8)
+  </Accordion>
+  
+  <Accordion title="API Service Unavailable">
+    **Problem**: "Service unavailable" or timeout errors
+    
+    **Solutions**:
+    - Check your internet connection
+    - Verify the API service status page
+    - Check if your region is supported
+    - Try again after a few minutes
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Environment Setup" icon="gear" href="/configuration/environment-setup">
+    Configure the complete development environment
+  </Card>
+  
+  <Card title="Language Options" icon="language" href="/configuration/language-options">
+    Explore multi-language voice generation options
+  </Card>
+</CardGroup>

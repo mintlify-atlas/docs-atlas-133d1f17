@@ -1,0 +1,517 @@
+---
+title: "Exporting Videos"
+description: "Download MP4 videos, export to PowerPoint, and understand format options"
+icon: "download"
+---
+
+Export your generated presentation as an MP4 video or PowerPoint file for sharing and distribution.
+
+## Export Formats
+
+The AI Video Presentation Generator supports two export formats:
+
+### MP4 Video
+
+- **Default format**: Generated automatically
+- **Resolution**: 1080p (1920x1080)
+- **Audio**: Synchronized voice narration
+- **Animations**: Embedded animations
+- **Compatibility**: Plays on all modern devices
+- **File size**: 50-200 MB depending on length
+
+### PowerPoint (PPTX)
+
+- **Manual export**: Generated from Slide Editor
+- **Format**: Microsoft PowerPoint 2016+
+- **Content**: Slides with text and images
+- **Animations**: Converted to static images
+- **Editable**: Full editing capability in PowerPoint
+- **File size**: 10-30 MB depending on images
+
+## Downloading the MP4 Video
+
+After your presentation is generated, you can download the video file.
+
+<Steps>
+<Step title="Navigate to Video Player">
+  After generation completes, you'll automatically see the Video Player screen.
+
+  If you need to return:
+  1. Video player URL contains the video filename
+  2. Video is served from `http://localhost:8000/api/video/{filename}`
+
+  Video player: `frontend/src/components/VideoPlayer.jsx`
+</Step>
+
+<Step title="Locate download button">
+  The **Download Video** button appears below the video player in the info panel.
+
+  Button features:
+  - Green background
+  - Download icon
+  - Shows "Downloading..." during download
+  - Automatically saves file
+
+  Download button: `frontend/src/components/VideoPlayer.jsx:550-571`
+</Step>
+
+<Step title="Click Download Video">
+  1. Click the **Download Video** button
+  2. Browser download process starts
+  3. File saves to your default downloads folder
+  4. Original filename is preserved
+
+  Download logic: `frontend/src/components/VideoPlayer.jsx:459-480`
+
+  <Tip>
+  The download may take a few moments depending on video size and your connection speed.
+  </Tip>
+</Step>
+
+<Step title="Verify download">
+  Check your downloads folder for:
+  - File format: `.mp4`
+  - File size: 50-200 MB typically
+  - Filename: `{topic}_video.mp4`
+  - Playable in any media player
+</Step>
+</Steps>
+
+## Exporting to PowerPoint
+
+Convert your presentation to an editable PowerPoint file.
+
+<Steps>
+<Step title="Open Slide Editor">
+  From the Video Player:
+  1. Click **Edit Slides** button
+  2. Make any desired customizations
+  3. Review all slide content
+
+  Editor access: `frontend/src/components/SlideEditor.jsx`
+</Step>
+
+<Step title="Click Export to PPT">
+  The **Export to PPT** button is in the top-right corner of the editor.
+
+  Export features:
+  - Green background
+  - Download icon
+  - Shows "Exporting..." during process
+  - Generates fresh PPTX file
+
+  Export button: `frontend/src/components/SlideEditor.jsx:861-904`
+</Step>
+
+<Step title="Wait for generation">
+  The system:
+  1. Packages all slides into PowerPoint format
+  2. Includes images and text
+  3. Applies presentation theme
+  4. Converts animations to static images
+  5. Initiates browser download
+
+  <Tip>
+  Export typically takes 5-15 seconds depending on slide count and media.
+  </Tip>
+</Step>
+
+<Step title="Open in PowerPoint">
+  After download:
+  1. Locate the `.pptx` file in downloads
+  2. Open with Microsoft PowerPoint, Google Slides, or compatible software
+  3. Edit as needed
+  4. Save and share
+</Step>
+</Steps>
+
+## Video Format Details
+
+### Technical Specifications
+
+**Video Encoding**
+- Codec: H.264
+- Container: MP4
+- Bitrate: Variable (optimized for quality)
+- Frame rate: 60 fps for animations, 30 fps for static slides
+
+**Audio Encoding**
+- Codec: AAC
+- Sample rate: 44.1 kHz
+- Channels: Stereo
+- Bitrate: 128 kbps
+
+**Resolution and Aspect Ratio**
+- Resolution: 1920x1080 (Full HD)
+- Aspect ratio: 16:9
+- Progressive scan
+
+### Compatibility
+
+MP4 videos play on:
+- **Desktop**: Windows Media Player, VLC, QuickTime
+- **Web browsers**: Chrome, Firefox, Safari, Edge
+- **Mobile**: iOS, Android native players
+- **Smart TVs**: Most modern smart TV platforms
+- **Video platforms**: YouTube, Vimeo, etc.
+
+## PowerPoint Format Details
+
+### Slide Layout
+
+Exported PowerPoint presentations include:
+
+**Title Slide**
+- Presentation topic as title
+- Subtitle with generation details
+- Themed background
+
+**Content Slides**
+- Slide title at top
+- Content text in main area
+- Images positioned left or right
+- Animation preview images (if applicable)
+
+**Theme Application**
+- Consistent color scheme
+- Professional fonts
+- Slide numbers
+- Background graphics
+
+### Editing Capabilities
+
+In PowerPoint, you can:
+- Edit all text content
+- Replace or remove images
+- Change theme and colors
+- Add new slides
+- Reorder slides
+- Add PowerPoint animations
+- Insert charts and tables
+- Export to other formats
+
+### Animation Handling
+
+<Warning>
+Manim animations are converted to static images in PowerPoint. The dynamic movement is lost, but key frames are preserved.
+</Warning>
+
+For animated slides:
+- Multiple static images show animation stages
+- Images are arranged sequentially
+- Notes indicate original animation description
+- Consider using PowerPoint's built-in animations
+
+## File Management
+
+### Where Files Are Stored
+
+**Server-side (Backend)**
+- Generated videos: `backend/outputs/videos/`
+- Animation renders: `backend/outputs/manim/`
+- Manim code: `backend/outputs/manim_code/`
+- Audio files: `backend/outputs/audio/`
+
+**Client-side (Downloads)**
+- Browser downloads folder
+- Configurable in browser settings
+- Both MP4 and PPTX save here
+
+### Filename Conventions
+
+**MP4 Videos**
+```
+{topic}_video.mp4
+```
+Example: `Newtons_Third_Law_video.mp4`
+
+**PowerPoint Files**
+```
+{topic}_presentation.pptx
+```
+Example: `Newtons_Third_Law_presentation.pptx`
+
+**Special Characters**
+- Spaces replaced with underscores
+- Illegal filename characters removed
+- Maximum length: 30 characters for topic portion
+
+Filename sanitization: `backend/generators/manim_generator.py:17-24`
+
+## Sharing Your Presentation
+
+### Direct Sharing
+
+**MP4 Video**
+- Email as attachment (if under size limit)
+- Upload to cloud storage (Google Drive, Dropbox)
+- Share via messaging apps
+- Post on video platforms
+
+**PowerPoint File**
+- Email as attachment
+- Share via OneDrive/Google Drive
+- Present directly in PowerPoint
+- Convert to PDF for viewing
+
+### Online Platforms
+
+**Video Platforms**
+- **YouTube**: Upload for public or private viewing
+- **Vimeo**: Professional video hosting
+- **Google Drive**: Share with view/download links
+- **Microsoft Stream**: Enterprise video platform
+
+**Presentation Platforms**
+- **SlideShare**: Upload PowerPoint for web viewing
+- **Google Slides**: Import and share PPTX
+- **Microsoft OneDrive**: Cloud storage with preview
+
+### Embedding
+
+**Video Embedding**
+```html
+<video width="640" height="360" controls>
+  <source src="presentation.mp4" type="video/mp4">
+</video>
+```
+
+**YouTube Embedding**
+```html
+<iframe width="560" height="315" 
+  src="https://www.youtube.com/embed/VIDEO_ID" 
+  frameborder="0" allowfullscreen>
+</iframe>
+```
+
+## File Size Optimization
+
+If your exported files are too large:
+
+### Reducing Video Size
+
+**Fewer slides**
+- Reduce slide count during generation
+- Each slide adds 20-40 MB
+
+**Limit animations**
+- Animations increase file size
+- Consider text-only slides
+- Use static images instead
+
+**Compress after export**
+- Use video compression tools
+- Reduce resolution to 720p
+- Lower audio bitrate
+
+### Reducing PowerPoint Size
+
+**Compress images**
+- PowerPoint: File > Compress Pictures
+- Choose resolution appropriate for use
+- Delete cropped areas
+
+**Remove unused media**
+- Delete slides not needed
+- Remove embedded videos
+- Optimize image formats
+
+**Save as PDF**
+- Smaller file size
+- No editing capability
+- Universal compatibility
+
+## Download Troubleshooting
+
+**Video won't download**
+- Check browser pop-up blocker
+- Verify video file exists on server
+- Check browser console for errors
+- Try different browser
+- Check disk space
+
+**Download is incomplete**
+- Slow connection may timeout
+- Check file size matches expected
+- Retry download
+- Check for browser extensions interfering
+
+**PowerPoint export fails**
+- Verify backend server is running
+- Check export API endpoint
+- Review browser console errors
+- Try exporting with fewer slides
+- Check server logs
+
+**Video won't play after download**
+- Verify file downloaded completely
+- Check file size is not 0 bytes
+- Try different media player
+- Check file format is .mp4
+- Re-download if corrupted
+
+## Quality Considerations
+
+### Video Quality
+
+**Factors affecting quality:**
+- Animation complexity
+- Image resolution in slides
+- Audio recording quality
+- Server rendering resources
+
+**Optimizing quality:**
+- Use high-resolution images (1920x1080+)
+- Write clear, well-structured slide content
+- Choose appropriate voice tone/language
+- Review animations before finalizing
+
+### PowerPoint Quality
+
+**Factors affecting quality:**
+- Image compression settings
+- Font availability on target system
+- Theme consistency
+- Animation-to-static conversion
+
+**Optimizing quality:**
+- Keep images uncompressed during edit
+- Use standard fonts
+- Review layout in PowerPoint
+- Test on target presentation system
+
+## Best Practices
+
+<Tip>
+**Before downloading:**
+- Preview the entire video
+- Verify all slides are correct
+- Check audio synchronization
+- Test video controls work
+</Tip>
+
+<Tip>
+**Before exporting PowerPoint:**
+- Review all slides in editor
+- Verify images display correctly
+- Check content doesn't overflow
+- Remove unnecessary slides
+</Tip>
+
+<Tip>
+**For sharing:**
+- Consider your audience's capabilities
+- Choose format based on use case
+- Test on target platform first
+- Provide fallback options
+</Tip>
+
+<Tip>
+**For archiving:**
+- Keep both MP4 and PPTX versions
+- Back up to cloud storage
+- Document generation settings used
+- Save original slide content
+</Tip>
+
+## Advanced Export Options
+
+### Custom Video Formats
+
+While MP4 is default, you can convert to other formats:
+
+**Using FFmpeg:**
+```bash
+# Convert to WebM
+ffmpeg -i input.mp4 -c:v libvpx-vp9 -crf 30 output.webm
+
+# Convert to AVI
+ffmpeg -i input.mp4 -c:v mpeg4 output.avi
+
+# Extract audio only
+ffmpeg -i input.mp4 -vn -acodec mp3 audio.mp3
+```
+
+### PowerPoint to PDF
+
+**In PowerPoint:**
+1. File > Export
+2. Create PDF/XPS Document
+3. Choose options
+4. Publish
+
+**Online converters:**
+- Smallpdf.com
+- ILovePDF.com
+- Zamzar.com
+
+### Batch Processing
+
+For multiple presentations:
+
+1. Generate multiple videos
+2. Download each individually
+3. Use scripts to process batch
+4. Organize by topic/date
+
+## Technical Implementation
+
+### Download Implementation
+
+The download uses browser Fetch API:
+
+```javascript
+const response = await fetch(videoUrl);
+const blob = await response.blob();
+const url = window.URL.createObjectURL(blob);
+const a = document.createElement('a');
+a.href = url;
+a.download = videoFilename;
+document.body.appendChild(a);
+a.click();
+window.URL.revokeObjectURL(url);
+```
+
+Implementation: `frontend/src/components/VideoPlayer.jsx:459-480`
+
+### PowerPoint Generation
+
+The backend uses python-pptx library:
+
+```python
+from pptx import Presentation
+from pptx.util import Inches, Pt
+
+prs = Presentation()
+prs.slide_width = Inches(10)
+prs.slide_height = Inches(7.5)
+
+# Add slides with content
+# Apply theme
+# Insert images
+# Save file
+```
+
+### Server API Endpoints
+
+**Video Download**
+```
+GET /api/video/{filename}
+```
+- Returns video file as binary stream
+- Content-Type: video/mp4
+- Supports range requests
+
+**PowerPoint Export**
+```
+POST /api/export/pptx
+```
+- Accepts slide data as JSON
+- Generates PPTX file
+- Returns file as download
+
+## Next Steps
+
+- [Create a new presentation](/guides/creating-presentations)
+- [Customize slide content](/guides/customizing-slides)
+- [Learn about animations](/guides/working-with-animations)

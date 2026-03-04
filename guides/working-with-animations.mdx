@@ -1,0 +1,488 @@
+---
+title: "Working with Animations"
+description: "Understanding Manim animations, supported concepts, and animation limitations"
+icon: "wand-magic-sparkles"
+---
+
+The AI Video Presentation Generator uses Manim (Mathematical Animation Engine) to create dynamic visual animations for complex concepts.
+
+## What are Manim Animations?
+
+Manim is a Python library created by 3Blue1Brown for creating mathematical and educational animations programmatically.
+
+### Key Features
+
+- **Precise control**: Animations defined through code
+- **Mathematical accuracy**: Perfect for equations and diagrams
+- **Reproducible**: Same code produces identical results
+- **Professional quality**: Smooth, polished animations
+
+Manim generator: `backend/generators/manim_generator.py`
+
+## When Animations Are Generated
+
+The AI automatically determines which slides benefit from animation based on:
+
+### Supported Topics
+
+**Physics Concepts**
+- Force diagrams and vectors
+- Motion and acceleration
+- Energy transformations
+- Wave mechanics
+- Newton's laws demonstrations
+
+**Mathematical Concepts**
+- Geometric proofs
+- Equation transformations
+- Graph plotting
+- Algebraic manipulations
+- Pythagorean theorem visualizations
+
+**Algorithms and Computer Science**
+- Sorting algorithms
+- Data structure operations
+- Graph traversals
+- Recursion visualization
+- Binary search demonstrations
+
+**Chemistry and Biology**
+- Molecular structures
+- Chemical reactions
+- Cell processes
+- DNA replication
+
+<Tip>
+Not every slide gets an animation. The AI evaluates whether visual animation adds value to the concept being explained.
+</Tip>
+
+## Animation Generation Process
+
+<Steps>
+<Step title="AI analyzes slide content">
+  The system examines:
+  - Slide topic and description
+  - Complexity of concept
+  - Potential for visual representation
+  - Available animation duration
+</Step>
+
+<Step title="Generate Manim code">
+  If animation is beneficial, the AI:
+  1. Reads animation guidelines from `backend/MANIM_CODE_GUIDE.md`
+  2. Generates Python code following strict rules
+  3. Validates code structure
+  4. Saves code to disk
+
+  Code generation: `backend/generators/manim_generator.py:26-78`
+</Step>
+
+<Step title="Render animation">
+  The Manim library:
+  1. Executes the Python code
+  2. Renders frames at 60fps
+  3. Outputs MP4 video file
+  4. Includes in final presentation
+
+  <Tip>
+  Rendering typically takes 10-30 seconds per animation depending on complexity.
+  </Tip>
+</Step>
+
+<Step title="Integrate with slides">
+  The animation:
+  - Replaces or complements static images
+  - Synchronizes with narration timing
+  - Maintains consistent quality
+  - Fits slide layout
+</Step>
+</Steps>
+
+## Manim Code Guidelines
+
+The system follows strict guidelines to ensure reliable animation generation.
+
+### Approved Objects Only
+
+Animations can ONLY use these Manim objects:
+
+**Basic Shapes**
+```python
+Circle(radius=1, color=BLUE)
+Square(side_length=2, color=RED)
+Rectangle(width=3, height=2)
+Polygon([0,0,0], [1,0,0], [0.5,1,0])  # Triangles, custom shapes
+Line(start=[0,0,0], end=[2,1,0])
+Arrow(start=[0,0,0], end=[1,1,0])
+Dot(point=[1,1,0], radius=0.1)
+Arc(radius=0.5, start_angle=0, angle=PI/4)
+```
+
+**Text Objects**
+```python
+Text("Hello", font_size=36, color=BLUE)
+MathTex(r"a^2 + b^2 = c^2")  # LaTeX math
+Tex("Simple text", font_size=24)
+```
+
+**Groups**
+```python
+VGroup(obj1, obj2, obj3)  # Combine multiple objects
+```
+
+Guidelines reference: `backend/MANIM_CODE_GUIDE.md:56-91`
+
+### Prohibited Objects
+
+<Warning>
+These objects will cause errors and are NOT allowed:
+
+- ❌ `SVGMobject` - No SVG files available
+- ❌ `ImageMobject` - No image assets
+- ❌ `NumberLine` - Use `Line` + `Text` instead
+- ❌ `Axes` - Use `Line` objects instead
+- ❌ `Graph` - Use `Line` objects instead
+- ❌ `CurvedPolyline` - Doesn't exist in this version
+</Warning>
+
+### Coordinate Rules
+
+All coordinates must be 3D (X, Y, Z):
+
+**Correct:**
+```python
+point = [1, 2, 0]  # X=1, Y=2, Z=0
+dot = Dot([1, 2, 0])
+```
+
+**Incorrect:**
+```python
+point = [1, 2]  # ERROR: Missing Z coordinate
+```
+
+**Safe positioning methods:**
+```python
+# Method 1: Use numpy
+import numpy as np
+A = np.array([1, 2, 0])
+B = A + np.array([0.5, 0, 0])
+
+# Method 2: Use .shift() (recommended)
+label = Text("A").move_to([1,2,0]).shift(UP*0.3)
+
+# Method 3: Use .next_to()
+label = Text("Box").next_to(square, UP, buff=0.2)
+```
+
+Coordinate guidelines: `backend/MANIM_CODE_GUIDE.md:118-142`
+
+## Animation Methods
+
+Manim provides various animation types:
+
+### Creation Animations
+
+```python
+self.play(Create(circle))        # Draw shape
+self.play(Write(text))          # Write text
+self.play(FadeIn(object))       # Fade in
+```
+
+### Transformation Animations
+
+```python
+self.play(Transform(obj1, obj2))           # Morph
+self.play(obj.animate.move_to([1,0,0]))    # Move
+self.play(obj.animate.shift(UP*2))         # Shift
+self.play(obj.animate.scale(1.5))          # Scale
+self.play(obj.animate.rotate(PI/4))        # Rotate
+self.play(obj.animate.set_color(GREEN))    # Color
+```
+
+### Removal Animations
+
+```python
+self.play(FadeOut(obj))     # Fade out
+self.play(Uncreate(obj))    # Reverse creation
+```
+
+### Timing Control
+
+```python
+self.wait(2)                           # Pause 2 seconds
+self.play(Create(obj), run_time=3)     # Animation duration
+```
+
+Animation reference: `backend/MANIM_CODE_GUIDE.md:144-166`
+
+## Animation Template
+
+All animations follow this structure:
+
+```python
+from manim import *
+import numpy as np
+
+class SlideAnimation(Scene):
+    def construct(self):
+        # Title
+        title = Text("Concept Name", font_size=48)
+        title.to_edge(UP)
+        self.play(Write(title))
+        self.wait(0.5)
+        
+        # Main content - shapes
+        shape1 = Circle(radius=1, color=BLUE, fill_opacity=0.5)
+        shape2 = Square(side_length=1.5, color=RED)
+        shape2.next_to(shape1, RIGHT, buff=0.5)
+        
+        self.play(Create(shape1), Create(shape2))
+        self.wait(0.5)
+        
+        # Labels
+        label1 = Text("A", font_size=24)
+        label1.next_to(shape1, DOWN)
+        
+        self.play(Write(label1))
+        
+        # Animation
+        self.play(shape1.animate.scale(1.5))
+        self.play(shape1.animate.set_color(GREEN))
+        
+        # Formula
+        formula = MathTex(r"E = mc^2")
+        formula.to_edge(DOWN)
+        self.play(Write(formula))
+        
+        self.wait(2)
+```
+
+Template reference: `backend/MANIM_CODE_GUIDE.md:169-217`
+
+## Viewing Animation Details
+
+In the Slide Editor, animated slides show:
+
+### Animation Preview
+
+- Live rendering of the animation
+- Plays automatically in loop
+- Shows actual animation timing
+- Updates when code is edited
+
+Preview component: `frontend/src/components/SlideEditor.jsx:628-635`
+
+### Animation Description
+
+A text description explaining:
+- What the animation demonstrates
+- Key visual elements
+- Timing and transitions
+
+Description display: `frontend/src/components/SlideEditor.jsx:638-645`
+
+### Animation Code Viewer
+
+Expand to see/edit:
+- Full Python/Manim code
+- Syntax highlighting
+- Real-time validation
+- Direct editing capability
+
+Code editor: `frontend/src/components/SlideEditor.jsx:647-663`
+
+## Editing Animation Code
+
+<Warning>
+Editing animation code requires knowledge of Python and Manim syntax. Invalid code will fail to render.
+</Warning>
+
+<Steps>
+<Step title="Access the code editor">
+  In the Slide Editor:
+  1. Find a slide with animation
+  2. Locate the **Animation** section
+  3. Click **View/Edit Animation Code**
+  4. The code editor expands
+</Step>
+
+<Step title="Make your changes">
+  - Edit directly in the textarea
+  - Follow Manim syntax rules
+  - Keep the class name as `SlideAnimation`
+  - Maintain the `construct` method
+
+  <Tip>
+  Test changes incrementally. Small edits are easier to debug.
+  </Tip>
+</Step>
+
+<Step title="Preview your changes">
+  - Save the slide
+  - Animation preview updates
+  - Check for rendering errors
+  - Verify timing matches expectations
+</Step>
+</Steps>
+
+## Animation Limitations
+
+### Technical Constraints
+
+**Rendering Time**
+- Each animation takes 10-30 seconds to render
+- Complex animations take longer
+- Rendering happens server-side
+
+**File Size**
+- Animations increase final video size
+- More animations = larger file
+- Typical animation: 2-5 MB
+
+**Duration Limits**
+- Animations are 5-10 seconds each
+- Matched to narration timing
+- Cannot exceed slide duration
+
+### Content Limitations
+
+**No External Files**
+- Cannot use SVG files
+- Cannot use image files
+- Cannot use custom fonts
+- Must use built-in objects only
+
+**Object Restrictions**
+- Only approved objects allowed (see guidelines)
+- No arbitrary Manim objects
+- Limited to mathematical/geometric shapes
+
+**Complexity Limits**
+- Very complex animations may fail
+- Too many objects cause performance issues
+- Extremely long calculations timeout
+
+## Troubleshooting Animations
+
+**Animation fails to generate**
+- Check backend console for errors
+- Verify Manim is installed: `pip install manim`
+- Review generated code for syntax errors
+- Check animation meets guidelines
+
+**Animation doesn't match expectation**
+- Review animation description
+- Check slide content - animation derives from it
+- Edit animation code directly
+- Regenerate with modified prompt
+
+**Animation rendering is slow**
+- Normal: 10-30 seconds per animation
+- Complex animations take longer
+- Check server resources
+- Consider simplifying animation
+
+**Animation causes video errors**
+- Verify output file exists
+- Check file format is MP4
+- Review FFmpeg logs
+- Test animation in isolation
+
+## Best Practices
+
+<Tip>
+**When to use animations**
+- Visualizing movement or change
+- Demonstrating step-by-step processes
+- Showing geometric relationships
+- Illustrating mathematical concepts
+</Tip>
+
+<Tip>
+**When to skip animations**
+- Simple text explanations
+- Lists and bullet points
+- Static diagrams
+- Quotations or definitions
+</Tip>
+
+<Tip>
+**Optimizing animations**
+- Keep animations simple and focused
+- Use 5-7 seconds of animation time
+- Limit to 2-3 animated slides per presentation
+- Test animations before final export
+</Tip>
+
+## Animation Examples
+
+### Physics: Force on a Box
+
+```python
+from manim import *
+
+class SlideAnimation(Scene):
+    def construct(self):
+        title = Text("Newton's Second Law", font_size=48)
+        title.to_edge(UP)
+        self.play(Write(title))
+        
+        # Box
+        box = Square(side_length=1, color=BLUE, fill_opacity=0.7)
+        
+        # Force arrow
+        force = Arrow(start=[-2,0,0], end=[0,0,0], color=RED, buff=0)
+        force_label = Text("F", font_size=24, color=RED)
+        force_label.next_to(force, UP)
+        
+        self.play(Create(box), Create(force), Write(force_label))
+        
+        # Accelerate box
+        self.play(box.animate.shift(RIGHT*3), run_time=2)
+        
+        # Formula
+        formula = MathTex(r"F = ma")
+        formula.to_edge(DOWN)
+        self.play(Write(formula))
+        
+        self.wait(2)
+```
+
+### Math: Pythagorean Theorem
+
+```python
+from manim import *
+
+class SlideAnimation(Scene):
+    def construct(self):
+        title = Text("Pythagorean Theorem", font_size=48)
+        title.to_edge(UP)
+        self.play(Write(title))
+        
+        # Right triangle
+        triangle = Polygon(
+            [0,0,0], [3,0,0], [3,2,0],
+            color=BLUE, fill_opacity=0.3
+        )
+        self.play(Create(triangle))
+        
+        # Labels
+        a_label = Text("a", font_size=24).next_to([1.5,0,0], DOWN)
+        b_label = Text("b", font_size=24).next_to([3,1,0], RIGHT)
+        c_label = Text("c", font_size=24).move_to([1.5,1.3,0])
+        
+        self.play(Write(a_label), Write(b_label), Write(c_label))
+        
+        # Formula
+        formula = MathTex(r"a^2 + b^2 = c^2")
+        formula.to_edge(DOWN)
+        self.play(Write(formula))
+        
+        self.wait(3)
+```
+
+## Next Steps
+
+- [Customize slide content](/guides/customizing-slides)
+- [Export your presentation](/guides/exporting-videos)
+- [Create a new presentation](/guides/creating-presentations)

@@ -1,0 +1,184 @@
+---
+title: Content Generation
+description: How the AI Video Presentation Generator creates structured presentation content using Gemini AI
+---
+
+## Overview
+
+The Content Generation feature uses Google's Gemini AI to transform your topic into a structured presentation. It analyzes your input and creates a complete slide-by-slide breakdown, deciding what content appears on each slide and whether visuals (animations or images) are needed.
+
+## How It Works
+
+When you provide a topic, the Content Generator:
+
+1. **Structures the Presentation**: Creates a logical flow of slides (typically 5-10 slides) that introduces, explains, and summarizes your topic
+2. **Determines Visual Needs**: For each slide, intelligently decides whether it needs:
+   - Text only (most common - 70-80% of slides)
+   - An image from Unsplash
+   - A Manim animation video
+3. **Estimates Timing**: Calculates appropriate duration for each slide based on content complexity (typically 4-10 seconds)
+4. **Saves the Structure**: Outputs a JSON file containing all slide metadata for downstream processing
+
+<Info>
+The system uses **mutual exclusivity** - each slide can have either an animation OR an image, never both. Most slides are text-only to maintain focus on the narrative.
+</Info>
+
+## Slide Structure
+
+Each generated slide contains:
+
+```python
+{
+  "slide_number": 1,
+  "title": "Introduction to Quantum Physics",
+  "content_text": "Quantum physics describes the behavior of matter at atomic scales.",
+  "needs_image": false,
+  "image_keyword": "",
+  "needs_animation": false,
+  "animation_description": "",
+  "duration": 6.0
+}
+```
+
+### Key Fields
+
+- **slide_number**: Sequential slide identifier (starts at 1)
+- **title**: Concise slide heading
+- **content_text**: Main narration text (2-4 sentences, optimized for TTS)
+- **needs_image**: Boolean flag for Unsplash image requirement
+- **image_keyword**: Search term for image fetching (only if `needs_image=true`)
+- **needs_animation**: Boolean flag for Manim animation requirement
+- **animation_description**: Detailed instructions for animation generation (only if `needs_animation=true`)
+- **duration**: Slide display time in seconds
+
+## Animation vs Image Logic
+
+### When Images Are Used
+
+Images are selected for:
+- Historical figures or famous people
+- Real-world objects, places, or phenomena
+- Static diagrams that support understanding
+- Background context or examples
+
+### When Animations Are Used
+
+<Warning>
+Animations are used **very sparingly** (maximum 1-2 per presentation) as they're resource-intensive to generate and render.
+</Warning>
+
+Animations are only created when:
+- The concept is **impossible** to understand without motion
+- Mathematical proofs require visual demonstration (e.g., Pythagorean theorem)
+- Vector operations need directional representation
+- Physical motion must be illustrated (e.g., circular motion with velocity vectors)
+
+### Text-Only Slides (Most Common)
+
+The majority of slides (70-80%) use text-only format for:
+- Definitions and explanations
+- Lists of concepts or steps
+- Summary slides
+- Theoretical concepts
+- General information
+
+## Configuration
+
+### API Settings
+
+Content generation is powered by the Gemini API, configured in `config.py`:
+
+```python
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+GEMINI_MODEL = "gemini-1.5-flash"  # Fast, cost-effective model
+```
+
+### Response Format
+
+The generator uses **structured JSON output** to ensure consistent, parseable responses:
+
+```python
+self.model = genai.GenerativeModel(
+    model_name=Config.GEMINI_MODEL,
+    generation_config={"response_mime_type": "application/json"}
+)
+```
+
+### Customizing Slide Count
+
+You can adjust the number of slides when generating content:
+
+```python
+content_generator = ContentGenerator()
+content = content_generator.generate_content(
+    topic="Introduction to Machine Learning",
+    num_slides=7  # Default is 5
+)
+```
+
+## Validation & Error Handling
+
+The system includes robust validation:
+
+```python
+@model_validator(mode='after')
+def validate_mutually_exclusive(self):
+    if self.needs_animation and self.needs_image:
+        raise ValueError(
+            f"Slide {self.slide_number}: Cannot have both animation and image."
+        )
+    return self
+```
+
+If Gemini generates invalid content:
+- **Missing fields** are automatically added with defaults
+- **Conflicting flags** (both `needs_animation` and `needs_image` set to true) are resolved by prioritizing animation
+- **Malformed JSON** is cleaned and parsed (removes markdown code blocks)
+
+<Tip>
+The system prints a breakdown after generation:
+```
+Slide breakdown: Text=5 Image=2 Animation=1
+```
+This helps you verify the visual distribution across your presentation.
+</Tip>
+
+## Output Structure
+
+Generated content is saved to:
+```
+workspace/source/data/slides/<topic_name>_content.json
+```
+
+**Example output:**
+```json
+{
+  "topic": "Introduction to Quantum Physics",
+  "total_slides": 5,
+  "slides": [
+    {
+      "slide_number": 1,
+      "title": "What is Quantum Physics?",
+      "content_text": "Quantum physics describes how matter behaves at atomic scales...",
+      "needs_image": false,
+      "image_keyword": "",
+      "needs_animation": false,
+      "animation_description": "",
+      "duration": 6.0
+    }
+  ]
+}
+```
+
+## Best Practices
+
+1. **Specific Topics Work Best**: "The Pythagorean Theorem Proof" generates better content than "Math"
+2. **Educational Focus**: The prompt is optimized for learning content - tutorials, concepts, explanations
+3. **Trust the AI**: Gemini's decisions on visual needs are based on educational best practices
+4. **Review the JSON**: Check the generated `_content.json` file to verify structure before video generation
+
+## Related Features
+
+- [Voice Narration](/features/voice-narration) - Converts `content_text` into audio
+- [Visual Media](/features/visual-media) - Generates animations and fetches images based on slide flags
+- [Video Composition](/features/video-composition) - Uses duration values for timeline synchronization

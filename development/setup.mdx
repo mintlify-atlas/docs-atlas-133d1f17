@@ -1,0 +1,292 @@
+---
+title: 'Development Environment Setup'
+description: 'Complete guide for setting up your local development environment for the AI Video Presentation Generator'
+---
+
+## Overview
+
+This guide walks you through setting up a complete development environment for contributing to the AI Video Presentation Generator project. This setup is more detailed than the basic installation guide and includes development tools, testing setup, and best practices.
+
+<Note>
+This project currently supports **Windows only** for development. Linux/Mac support is in progress.
+</Note>
+
+## Prerequisites
+
+Before starting, ensure you have:
+- **Python 3.8+** installed
+- **Node.js 16+** and npm
+- **Git** for version control
+- A code editor (VS Code recommended)
+- At least **4GB of free disk space**
+
+---
+
+## Initial Setup
+
+<Steps>
+  <Step title="Clone the Repository">
+    First, clone the repository and navigate to the project directory:
+    
+    ```bash
+    git clone https://github.com/Kamal-Nayan-Kumar/AI-Video-Gen
+    cd AI-Video-Gen
+    ```
+  </Step>
+
+  <Step title="Backend Environment Setup">
+    Navigate to the backend directory and create a Python virtual environment:
+    
+    ```bash
+    cd backend
+    python -m venv venv
+    ```
+    
+    Activate the virtual environment:
+    
+    **Windows:**
+    ```bash
+    venv\Scripts\activate
+    ```
+    
+    You should see `(venv)` in your terminal prompt.
+  </Step>
+
+  <Step title="Install Backend Dependencies">
+    With the virtual environment activated, install all Python dependencies:
+    
+    ```bash
+    pip install -r requirements.txt
+    ```
+    
+    This installs FastAPI, Manim, MoviePy, and other required packages.
+  </Step>
+
+  <Step title="Install FFmpeg">
+    FFmpeg is required for video processing:
+    
+    1. Download FFmpeg from [https://ffmpeg.org/download.html](https://ffmpeg.org/download.html)
+    2. Extract the archive to a location (e.g., `C:\ffmpeg`)
+    3. Add the `bin` directory to your System PATH:
+       - Open System Properties → Environment Variables
+       - Edit the `Path` variable
+       - Add `C:\ffmpeg\bin` (or your installation path)
+    
+    Verify the installation:
+    ```bash
+    ffmpeg -version
+    ```
+  </Step>
+
+  <Step title="Install Manim">
+    Manim should already be installed via requirements.txt, but verify:
+    
+    ```bash
+    manim --version
+    ```
+    
+    If not installed, run:
+    ```bash
+    pip install manim
+    ```
+  </Step>
+
+  <Step title="Configure Environment Variables">
+    Create a `.env` file in the `backend/` directory:
+    
+    ```bash
+    # Copy the example file
+    copy .env.example .env
+    ```
+    
+    Edit `.env` with your API keys:
+    ```bash
+    # AI Content Generation
+    GEMINI_API_KEY=your_gemini_api_key_here
+    
+    # Text-to-Speech
+    SARVAM_API_KEY=your_sarvam_api_key_here
+    SARVAM_TTS_URL=https://api.sarvam.ai/text-to-speech
+    SARVAM_MODEL=bulbul:v1
+    
+    # Image Fetching
+    UNSPLASH_ACCESS_KEY=your_unsplash_access_key_here
+    
+    # Server Configuration
+    HOST=0.0.0.0
+    PORT=8000
+    ```
+    
+    <Warning>
+    Never commit your `.env` file to version control! It's already in `.gitignore`.
+    </Warning>
+  </Step>
+
+  <Step title="Frontend Setup">
+    Open a new terminal, navigate to the frontend directory, and install dependencies:
+    
+    ```bash
+    cd frontend
+    npm install
+    ```
+    
+    This installs React, Vite, Tailwind CSS, and other frontend dependencies.
+  </Step>
+</Steps>
+
+---
+
+## Running in Development Mode
+
+### Backend Server
+
+In the `backend/` directory with virtual environment activated:
+
+```bash
+python app.py
+```
+
+The FastAPI server will start at:
+- **API**: `http://localhost:8000`
+- **API Docs**: `http://localhost:8000/docs` (Swagger UI)
+- **Alternative Docs**: `http://localhost:8000/redoc`
+
+<Tip>
+Use the `/docs` endpoint to test API endpoints interactively during development.
+</Tip>
+
+### Frontend Development Server
+
+In the `frontend/` directory:
+
+```bash
+npm run dev
+```
+
+The Vite development server will start at:
+- **Frontend**: `http://localhost:5173`
+
+### Hot Reloading
+
+- **Backend**: FastAPI auto-reloads on file changes when using `uvicorn` with `--reload` flag
+- **Frontend**: Vite provides instant hot module replacement (HMR)
+
+---
+
+## Git Workflow
+
+### Branch Strategy
+
+1. **Create a feature branch**:
+   ```bash
+   git checkout -b feature/your-feature-name
+   ```
+
+2. **Make your changes** and commit regularly:
+   ```bash
+   git add .
+   git commit -m "descriptive commit message"
+   ```
+
+3. **Push to your fork**:
+   ```bash
+   git push origin feature/your-feature-name
+   ```
+
+4. **Create a Pull Request** on GitHub
+
+### Commit Message Guidelines
+
+Follow conventional commits:
+- `feat: add new animation type support`
+- `fix: resolve CORS issue in API`
+- `docs: update setup instructions`
+- `refactor: improve video composition logic`
+- `test: add unit tests for content generator`
+
+---
+
+## Testing Locally
+
+### Manual Testing
+
+1. Start both backend and frontend servers
+2. Open `http://localhost:5173` in your browser
+3. Test the complete flow:
+   - Enter a topic (e.g., "Quantum Computing")
+   - Set number of slides (3-10)
+   - Choose language and tone
+   - Click "Generate" and monitor progress
+   - Preview the generated video
+   - Download the final MP4
+
+### Testing API Endpoints
+
+Use the Swagger UI at `http://localhost:8000/docs` to test:
+- `/api/generate` - Generate presentation
+- `/api/progress/{generation_id}` - SSE progress stream
+- `/api/video/{filename}` - Video streaming
+- `/health` - Health check
+
+### Checking Output Files
+
+Generated files are stored in `backend/outputs/`:
+```
+outputs/
+├── audio/         # Generated voice narration
+├── images/        # Fetched images from Unsplash
+├── manim_code/    # Generated Manim Python code
+├── manim_output/  # Rendered animations
+├── scripts/       # Voice scripts with timestamps
+├── slides/        # Individual slide images
+└── final/         # Final composed videos
+```
+
+---
+
+## Development Tips
+
+<AccordionGroup>
+  <Accordion title="Enable Debug Logging">
+    Add debug prints in the code or configure Python logging:
+    
+    ```python
+    import logging
+    logging.basicConfig(level=logging.DEBUG)
+    ```
+  </Accordion>
+
+  <Accordion title="Clear Output Cache">
+    During development, you may want to clear cached outputs:
+    
+    ```bash
+    # From backend directory
+    rm -rf outputs/*
+    ```
+  </Accordion>
+
+  <Accordion title="Monitor API Performance">
+    Check terminal output for timing information:
+    - Content generation time
+    - Audio generation per slide
+    - Animation rendering duration
+    - Final video composition time
+  </Accordion>
+
+  <Accordion title="Frontend Development">
+    Vite proxy is configured to forward API requests to `http://localhost:8000`. Check `vite.config.js` if you change the backend port.
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Dependencies" icon="cube" href="/development/dependencies">
+    Learn about all project dependencies and their purposes
+  </Card>
+  <Card title="Troubleshooting" icon="wrench" href="/development/troubleshooting">
+    Common issues and how to resolve them
+  </Card>
+</CardGroup>

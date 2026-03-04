@@ -1,0 +1,287 @@
+---
+title: ScriptGenerator
+description: Generates voice narration scripts with timestamps for each slide
+---
+
+## Overview
+
+The `ScriptGenerator` class creates natural-sounding voice narration scripts for each slide. It takes the content structure from `ContentGenerator` and produces timed narration text that matches the specified language and tone.
+
+## Class Definition
+
+```python
+from generators.script_generator import ScriptGenerator
+
+script_gen = ScriptGenerator()
+```
+
+### Constructor
+
+```python
+def __init__(self)
+```
+
+Initializes the script generator with Google Gemini AI configuration.
+
+**Configuration:**
+- **Model**: Uses `Config.GEMINI_MODEL`
+- **Response Format**: JSON (`application/json` MIME type)
+- **API Key**: Configured via `Config.GEMINI_API_KEY`
+
+## Methods
+
+### generate_scripts
+
+Generates voice narration scripts with timestamps for all slides.
+
+```python
+def generate_scripts(content_data: Dict, language: str = "english", 
+                     tone: str = "formal") -> Dict
+```
+
+<ParamField path="content_data" type="Dict" required>
+  The presentation content structure from `ContentGenerator`
+</ParamField>
+
+<ParamField path="language" type="string" default="english">
+  Language for narration. Supported: `english`, `hindi`, `kannada`, `telugu`, `tamil`, `bengali`, `gujarati`, `malayalam`, `marathi`, `odia`, `punjabi`
+</ParamField>
+
+<ParamField path="tone" type="string" default="formal">
+  Narration tone style:
+  - `formal`: Academic, precise, technical language
+  - `casual`: Friendly, conversational, easy to understand
+  - `storytelling`: Narrative style with stories and examples
+</ParamField>
+
+<ResponseField name="return" type="Dict">
+  Script data with narration text and timestamps for each slide
+</ResponseField>
+
+**Returns structure:**
+
+```json
+{
+  "topic": "Newton's Laws of Motion",
+  "total_duration": 35.5,
+  "language": "english",
+  "slide_scripts": [
+    {
+      "slide_number": 1,
+      "start_time": 0.0,
+      "end_time": 6.0,
+      "narration_text": "Welcome! Today we'll explore Newton's Laws of Motion..."
+    },
+    {
+      "slide_number": 2,
+      "start_time": 6.0,
+      "end_time": 12.5,
+      "narration_text": "The first law states that an object at rest stays at rest..."
+    }
+  ]
+}
+```
+
+<ResponseField name="topic" type="string">
+  The presentation topic
+</ResponseField>
+
+<ResponseField name="total_duration" type="float">
+  Total video duration in seconds (sum of all slide durations)
+</ResponseField>
+
+<ResponseField name="language" type="string">
+  Language code for the narration
+</ResponseField>
+
+<ResponseField name="slide_scripts" type="array">
+  Array of slide script objects with narration and timing
+  
+  <Expandable title="Slide Script Properties">
+    <ResponseField name="slide_number" type="int">
+      Corresponding slide number
+    </ResponseField>
+    
+    <ResponseField name="start_time" type="float">
+      Start time in seconds from video beginning
+    </ResponseField>
+    
+    <ResponseField name="end_time" type="float">
+      End time in seconds from video beginning
+    </ResponseField>
+    
+    <ResponseField name="narration_text" type="string">
+      Natural spoken narration text for this slide (conversational, ~150 words/minute)
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Data Models
+
+### SlideScript
+
+Pydantic model for individual slide narration.
+
+```python
+class SlideScript(BaseModel):
+    slide_number: int = Field(description="Slide number")
+    start_time: float = Field(description="Start time in seconds from beginning")
+    end_time: float = Field(description="End time in seconds")
+    narration_text: str = Field(description="Voice narration script for this slide")
+```
+
+### VideoScript
+
+Pydantic model for complete video script.
+
+```python
+class VideoScript(BaseModel):
+    topic: str
+    total_duration: float
+    language: str
+    slide_scripts: List[SlideScript]
+```
+
+## Narration Guidelines
+
+The script generator follows specific rules for different slide types:
+
+### For Animation Slides
+
+<Note>
+Narration **must** describe what the viewer sees happening in the animation.
+</Note>
+
+```python
+# Example for animation slide:
+"As you can see on screen, the triangle has sides a, b, and c. 
+Watch as we draw squares on each side. Notice that the area of 
+the two smaller squares equals the area of the larger square."
+```
+
+**Key phrases for animations:**
+- "As you can see..."
+- "Watch as..."
+- "Notice how..."
+- "Observe that..."
+
+### For Image Slides
+
+Reference the image naturally:
+
+```python
+"Looking at this image, we can see Isaac Newton's original diagram. 
+This illustration demonstrates the concept of gravitational force."
+```
+
+### For Text-Only Slides
+
+Focus on explaining the concept clearly without visual references:
+
+```python
+"The second law of motion states that force equals mass times acceleration. 
+This fundamental relationship helps us predict how objects will move."
+```
+
+## Tone Configuration
+
+From `backend/generators/script_generator.py:35-39`:
+
+```python
+tone_instructions = {
+    "formal": "Use formal, academic language. Be precise and technical.",
+    "casual": "Use casual, friendly language. Make it conversational and easy to understand.",
+    "storytelling": "Use narrative style, build engagement with stories and examples."
+}
+```
+
+## Usage Example
+
+From `backend/app.py:246-249`:
+
+```python
+# Step 2: Generate narration scripts with timestamps
+update_progress(generation_id, 20, "generating_scripts", 
+                "📜 Generating voice scripts...")
+
+script_gen = ScriptGenerator()
+script_data = script_gen.generate_scripts(content_data, request.language, request.tone)
+```
+
+## Timestamp Synchronization
+
+Initial timestamps are estimates. They are **corrected** after audio generation based on actual audio durations:
+
+```python
+# From app.py:288-299
+# Update script timestamps based on actual audio durations
+current_time = 0
+for slide_script in script_data['slide_scripts']:
+    slide_num = slide_script['slide_number']
+    actual_duration = actual_durations.get(slide_num, 
+                                          slide_script['end_time'] - slide_script['start_time'])
+    
+    slide_script['start_time'] = current_time
+    slide_script['end_time'] = current_time + actual_duration
+    current_time += actual_duration
+
+script_data['total_duration'] = current_time
+```
+
+## Prompt Engineering
+
+The generator builds a detailed prompt including:
+
+1. **Topic and settings**: Language, tone, and instructions
+2. **Slide information**: Title, content, duration, and visual flags
+3. **Narration requirements**: Pacing (~150 words/minute), natural speech
+4. **Animation-specific instructions**: Describe visual elements step-by-step
+5. **Timing guidance**: Sequential timestamps matching slide durations
+
+Example slide info passed to AI:
+
+```python
+slides_info = "\n".join([
+    f"Slide {slide['slide_number']}: {slide['title']}\n"
+    f"  Content: {slide['content_text']}\n"
+    f"  Duration: {slide['duration']}s\n"
+    f"  Has Animation: {slide['needs_animation']}\n"
+    f"  Animation Description: {slide.get('animation_description', 'N/A')}\n"
+    f"  Has Image: {slide['needs_image']}\n"
+    for slide in content_data['slides']
+])
+```
+
+## File Persistence
+
+Generated scripts are automatically saved to:
+
+```
+Config.SCRIPTS_DIR / "{topic_sanitized}_script.json"
+```
+
+## Response Processing
+
+The generator cleans markdown formatting from AI responses:
+
+```python
+response = self.model.generate_content(prompt)
+text = response.text.strip()
+
+# Remove markdown code blocks
+if text.startswith('```json'):
+    text = text[7:]
+if text.startswith('```'):
+    text = text[3:]
+if text.endswith('```'):
+    text = text[:-3]
+text = text.strip()
+
+script_data = json.loads(text)
+```
+
+## Related Components
+
+- [ContentGenerator](/api/content-generator) - Provides input content structure
+- [VoiceGenerator](/api/voice-generator) - Converts narration text to audio
+- [VideoComposer](/api/video-composer) - Uses timestamps for video synchronization

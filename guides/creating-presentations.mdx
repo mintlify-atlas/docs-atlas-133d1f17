@@ -1,0 +1,226 @@
+---
+title: "Creating Presentations"
+description: "Complete workflow for generating AI-powered video presentations from topics"
+icon: "video"
+---
+
+Generate educational video presentations with AI-generated content, animations, and voice narration by simply entering a topic.
+
+## Overview
+
+The AI Video Presentation Generator creates complete video presentations by:
+- Generating structured slide content from your topic
+- Adding professional animations for visual concepts
+- Creating synchronized voice narration
+- Combining everything into a downloadable MP4 video
+
+## Starting a New Presentation
+
+<Steps>
+<Step title="Enter your topic">
+  On the home screen, enter a specific topic in the **Topic / Prompt** field.
+
+  <Tip>
+  Be specific for better results. Use descriptive prompts like "Explain Newton's Third Law of Motion" instead of just "physics".
+  </Tip>
+
+  Example topics:
+  - "Explain photosynthesis in plants"
+  - "How does blockchain technology work"
+  - "The water cycle and its importance"
+
+  The topic field is located in `frontend/src/components/Home.jsx:878`
+</Step>
+
+<Step title="Configure presentation settings">
+  Adjust these parameters to customize your presentation:
+
+  **Number of Slides** (3-10)
+  - Default: 5 slides
+  - Determines presentation length
+  - More slides = more detailed coverage
+
+  **Language**
+  - English (default)
+  - Hindi
+  - Kannada
+  - Telugu
+
+  **Tone**
+  - Formal: Academic, professional style
+  - Casual: Conversational, friendly approach
+  - Enthusiastic: Energetic, engaging delivery
+
+  These settings are configured in `frontend/src/components/Home.jsx:891-939`
+</Step>
+
+<Step title="Click Generate Video Presentation">
+  Click the **Generate Video Presentation** button to start the generation process.
+
+  The system will:
+  1. Send your request to the backend API (`POST http://localhost:8000/api/generate`)
+  2. Generate slide content using AI
+  3. Create animations for visual concepts
+  4. Generate voice narration
+  5. Compile everything into a video
+
+  Button implementation: `frontend/src/components/Home.jsx:972-983`
+</Step>
+
+<Step title="Monitor generation progress">
+  During generation, you'll see a loading indicator showing:
+  - Spinning animation
+  - Status message: "Generating your presentation..."
+  - Reminder to check backend console for detailed logs
+
+  The process typically takes several minutes depending on:
+  - Number of slides
+  - Complexity of animations
+  - Server performance
+
+  Progress UI: `frontend/src/components/Home.jsx:994-1010`
+</Step>
+</Steps>
+
+## What Happens During Generation
+
+### Content Generation
+
+The AI analyzes your topic and creates:
+- **Title slide**: Introduction with topic overview
+- **Content slides**: Key concepts with explanations
+- **Conclusion slide**: Summary and key takeaways
+
+Each slide includes:
+- Clear, focused title
+- Structured content (bullet points or paragraphs)
+- Duration estimate for narration timing
+
+### Animation Selection
+
+For certain topics, the system automatically generates animations:
+- **Physics concepts**: Force diagrams, motion illustrations
+- **Mathematical concepts**: Geometric proofs, equations
+- **Algorithms**: Flow diagrams, step visualizations
+
+Animations are generated using Manim (Mathematical Animation Engine) as defined in `backend/generators/manim_generator.py`
+
+<Tip>
+Not all slides get animations. The AI determines which concepts benefit most from visual animation.
+</Tip>
+
+### Voice Narration
+
+The system generates natural-sounding voice narration that:
+- Explains each slide's content
+- Matches your selected language and tone
+- Synchronizes with slide timing
+- Uses text-to-speech technology
+
+### Video Compilation
+
+All elements are combined into:
+- Standard MP4 format
+- 1080p resolution
+- Synchronized audio/video
+- Professional transitions
+
+## Viewing Your Generated Video
+
+Once generation completes:
+
+1. The interface automatically transitions to the video player
+2. Your video starts playing with full controls
+3. You can see the slide timeline on the right
+4. All slide content is displayed below the player
+
+Video player implementation: `frontend/src/components/VideoPlayer.jsx`
+
+## Generation Best Practices
+
+<Tip>
+**Choose the right number of slides**
+- 3-5 slides: Quick overview or simple concepts
+- 5-7 slides: Standard educational content
+- 8-10 slides: Comprehensive, detailed explanations
+</Tip>
+
+<Tip>
+**Write effective prompts**
+- Include specific concepts you want covered
+- Mention the target audience level if relevant
+- Use action words: "Explain", "Demonstrate", "Compare"
+</Tip>
+
+<Tip>
+**Language and tone selection**
+- Match language to your audience
+- Use formal tone for academic content
+- Use enthusiastic tone for engaging, motivational content
+</Tip>
+
+## Common Issues
+
+**Generation takes too long**
+- Check your internet connection
+- Reduce number of slides
+- Simplify your topic prompt
+- Check backend console for errors
+
+**Generation fails**
+- Ensure backend server is running
+- Verify API keys are configured
+- Check topic doesn't contain invalid characters
+- Review backend logs at `backend/main.py`
+
+**Video quality issues**
+- Generated videos are 1080p by default
+- Quality depends on animation complexity
+- Check available disk space for rendering
+
+## Technical Details
+
+### API Request Structure
+
+The frontend sends this request to start generation:
+
+```javascript
+axios.post("http://localhost:8000/api/generate", {
+  topic: "Your topic here",
+  num_slides: 5,
+  language: "english",
+  tone: "formal"
+})
+```
+
+### Response Data
+
+On success, the API returns:
+
+```javascript
+{
+  status: "success",
+  content_data: { /* slide content */ },
+  script_data: { /* narration scripts */ },
+  video_path: "path/to/video.mp4",
+  video_filename: "topic_video.mp4"
+}
+```
+
+### Backend Processing
+
+The backend orchestrates:
+1. Content generation via AI model
+2. Animation code generation (if applicable)
+3. Manim rendering for animations
+4. TTS (Text-to-Speech) for narration
+5. Video compilation using FFmpeg
+
+Main generation logic: `backend/main.py`
+
+## Next Steps
+
+After creating your presentation:
+- [Customize slide content](/guides/customizing-slides)
+- [Learn about animations](/guides/working-with-animations)
+- [Export your video](/guides/exporting-videos)

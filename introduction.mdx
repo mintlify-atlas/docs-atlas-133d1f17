@@ -1,0 +1,308 @@
+---
+title: Welcome to AI Video Presentation Generator
+description: Transform any topic into an engaging video presentation with AI-powered content generation, voice narration, dynamic animations, and professional visuals.
+mode: custom
+---
+
+<div className="relative py-20 overflow-hidden bg-gradient-to-br from-purple-900 via-purple-700 to-indigo-900 dark:from-[#1a0f2e] dark:via-[#2d1b4e] dark:to-[#1e1533]">
+  <div className="max-w-6xl mx-auto px-6 lg:px-8">
+    <div className="grid lg:grid-cols-12 gap-12 items-center">
+      <div className="lg:col-span-7">
+        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white mb-6">
+          Create stunning video presentations with AI
+        </h1>
+        <p className="text-lg sm:text-xl text-purple-100 dark:text-gray-300 mb-8 max-w-2xl">
+          Enter any topic and watch AI generate professional presentations with narrated content, dynamic animations, and visual media — all composed into a polished video ready to share.
+        </p>
+        <div className="flex flex-wrap gap-4">
+          <a
+            href="/quickstart"
+            className="inline-flex items-center px-6 py-3 rounded-lg bg-white text-purple-900 font-semibold hover:bg-purple-50 transition-colors"
+          >
+            Get Started
+            <svg className="ml-2 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+            </svg>
+          </a>
+          <a
+            href="/api/overview"
+            className="inline-flex items-center px-6 py-3 rounded-lg border-2 border-white/30 bg-white/10 text-white font-semibold hover:bg-white/20 transition-colors backdrop-blur-sm"
+          >
+            Explore API
+          </a>
+        </div>
+      </div>
+      <div className="lg:col-span-5 hidden lg:block">
+        <div className="relative">
+          <div className="absolute inset-0 bg-gradient-to-r from-purple-500 to-indigo-500 rounded-2xl blur-3xl opacity-30"></div>
+          <div className="relative bg-white/10 backdrop-blur-lg rounded-2xl p-8 border border-white/20">
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-purple-500 flex items-center justify-center">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                  </svg>
+                </div>
+                <div>
+                  <div className="text-sm text-purple-200">AI Content</div>
+                  <div className="text-white font-semibold">Google Gemini</div>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-indigo-500 flex items-center justify-center">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                  </svg>
+                </div>
+                <div>
+                  <div className="text-sm text-purple-200">Voice Narration</div>
+                  <div className="text-white font-semibold">Sarvam AI TTS</div>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-violet-500 flex items-center justify-center">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" />
+                  </svg>
+                </div>
+                <div>
+                  <div className="text-sm text-purple-200">Visual Media</div>
+                  <div className="text-white font-semibold">Manim + Unsplash</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div className="mt-16 mb-16 max-w-5xl mx-auto px-6">
+  <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-4">
+    Quick Start
+  </h2>
+  <p className="text-base text-gray-600 dark:text-gray-400 mb-8">
+    Get your first AI-generated video presentation in minutes
+  </p>
+
+  <Steps>
+    <Step title="Enter your topic">
+      Open the application and enter any topic you want to create a presentation about. Specify the number of slides, language, and tone.
+      
+      ```json Example Request
+      {
+        "topic": "Introduction to Machine Learning",
+        "num_slides": 5,
+        "language": "english",
+        "tone": "formal"
+      }
+      ```
+    </Step>
+
+    <Step title="Watch the AI work">
+      The system generates your presentation through multiple stages:
+      - Content structure with slide titles and text
+      - Voice narration scripts synchronized to slides
+      - Visual media (images or animations) for key concepts
+      - Audio generation with multi-language support
+      
+      <Info>
+        Real-time progress updates stream via Server-Sent Events so you can track each stage as it completes.
+      </Info>
+    </Step>
+
+    <Step title="Review and customize">
+      Use the interactive slide editor to:
+      - Reorder slides with drag-and-drop
+      - Edit slide content and titles
+      - Preview the timeline with audio waveforms
+      - Adjust timing and transitions
+    </Step>
+
+    <Step title="Export your video">
+      Download the final MP4 video or export to PowerPoint format for further editing.
+      
+      ```bash Download Video
+      GET /api/video/{filename}
+      ```
+      
+      <Tip>
+        Videos support HTTP range requests for efficient streaming and seeking.
+      </Tip>
+    </Step>
+  </Steps>
+</div>
+
+<div className="mt-16 mb-16 max-w-5xl mx-auto px-6">
+  <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-4">
+    Explore by Feature
+  </h2>
+  <p className="text-base text-gray-600 dark:text-gray-400 mb-8">
+    Dive deep into the core capabilities that power the video generation pipeline
+  </p>
+
+  <CardGroup cols={2}>
+    <Card
+      title="AI Content Generation"
+      icon="wand-magic-sparkles"
+      href="/features/content-generation"
+    >
+      Google Gemini creates structured slide content with smart decisions about visuals and animations
+    </Card>
+    <Card
+      title="Voice Narration"
+      icon="microphone"
+      href="/features/voice-narration"
+    >
+      Multi-language text-to-speech with Sarvam AI generates natural-sounding narration for each slide
+    </Card>
+    <Card
+      title="Visual Media"
+      icon="image"
+      href="/features/visual-media"
+    >
+      Dynamic Manim animations and Unsplash images bring concepts to life
+    </Card>
+    <Card
+      title="Video Composition"
+      icon="film"
+      href="/features/video-composition"
+    >
+      FFmpeg orchestrates slides, audio, and visuals into professional video output
+    </Card>
+  </CardGroup>
+</div>
+
+<div className="mt-16 mb-16 max-w-5xl mx-auto px-6">
+  <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-4">
+    Documentation Sections
+  </h2>
+  <p className="text-base text-gray-600 dark:text-gray-400 mb-8">
+    Everything you need to use, customize, and extend the platform
+  </p>
+
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <a
+      href="/guides/creating-presentations"
+      className="group block rounded-2xl border border-gray-200 dark:border-[#27272a] bg-white dark:bg-[#1a1d27] overflow-hidden no-underline hover:border-[#8B5CF6] dark:hover:border-[#8B5CF6] transition-colors"
+    >
+      <div className="h-32 bg-gradient-to-br from-purple-100 to-indigo-100 dark:from-purple-900/30 dark:to-indigo-900/30 flex items-center justify-center">
+        <svg className="w-16 h-16 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+        </svg>
+      </div>
+      <div className="p-6">
+        <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-2 group-hover:text-[#8B5CF6] transition-colors">
+          User Guides
+        </h3>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+          Step-by-step tutorials for creating presentations, customizing slides, working with animations, and exporting videos
+        </p>
+        <div className="flex items-center text-sm font-medium text-[#8B5CF6]">
+          Read guides
+          <svg className="ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </div>
+      </div>
+    </a>
+
+    <a
+      href="/api/overview"
+      className="group block rounded-2xl border border-gray-200 dark:border-[#27272a] bg-white dark:bg-[#1a1d27] overflow-hidden no-underline hover:border-[#8B5CF6] dark:hover:border-[#8B5CF6] transition-colors"
+    >
+      <div className="h-32 bg-gradient-to-br from-blue-100 to-cyan-100 dark:from-blue-900/30 dark:to-cyan-900/30 flex items-center justify-center">
+        <svg className="w-16 h-16 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+        </svg>
+      </div>
+      <div className="p-6">
+        <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-2 group-hover:text-[#8B5CF6] transition-colors">
+          API Reference
+        </h3>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+          Complete REST API documentation with endpoints for generation, progress tracking, and video streaming
+        </p>
+        <div className="flex items-center text-sm font-medium text-[#8B5CF6]">
+          Explore API
+          <svg className="ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </div>
+      </div>
+    </a>
+
+    <a
+      href="/configuration/environment-setup"
+      className="group block rounded-2xl border border-gray-200 dark:border-[#27272a] bg-white dark:bg-[#1a1d27] overflow-hidden no-underline hover:border-[#8B5CF6] dark:hover:border-[#8B5CF6] transition-colors"
+    >
+      <div className="h-32 bg-gradient-to-br from-green-100 to-emerald-100 dark:from-green-900/30 dark:to-emerald-900/30 flex items-center justify-center">
+        <svg className="w-16 h-16 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+        </svg>
+      </div>
+      <div className="p-6">
+        <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-2 group-hover:text-[#8B5CF6] transition-colors">
+          Configuration
+        </h3>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+          Environment setup, API key configuration, and language options for customizing your instance
+        </p>
+        <div className="flex items-center text-sm font-medium text-[#8B5CF6]">
+          Configure
+          <svg className="ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </div>
+      </div>
+    </a>
+
+    <a
+      href="/development/architecture"
+      className="group block rounded-2xl border border-gray-200 dark:border-[#27272a] bg-white dark:bg-[#1a1d27] overflow-hidden no-underline hover:border-[#8B5CF6] dark:hover:border-[#8B5CF6] transition-colors"
+    >
+      <div className="h-32 bg-gradient-to-br from-orange-100 to-red-100 dark:from-orange-900/30 dark:to-red-900/30 flex items-center justify-center">
+        <svg className="w-16 h-16 text-orange-600 dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+        </svg>
+      </div>
+      <div className="p-6">
+        <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-2 group-hover:text-[#8B5CF6] transition-colors">
+          Development
+        </h3>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+          Architecture overview, frontend and backend details, and contribution guidelines for developers
+        </p>
+        <div className="flex items-center text-sm font-medium text-[#8B5CF6]">
+          Start contributing
+          <svg className="ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </div>
+      </div>
+    </a>
+  </div>
+</div>
+
+<div className="mt-20 mb-16 max-w-5xl mx-auto px-6">
+  <div className="rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 dark:from-purple-900 dark:to-indigo-900 p-8 sm:p-12 border border-purple-500/20">
+    <div className="max-w-3xl">
+      <h2 className="text-2xl sm:text-3xl font-bold text-white mb-4">
+        Ready to create your first presentation?
+      </h2>
+      <p className="text-lg text-purple-100 mb-6">
+        Follow our quickstart guide to set up your environment and generate your first AI-powered video presentation.
+      </p>
+      <a
+        href="/quickstart"
+        className="inline-flex items-center px-6 py-3 rounded-lg bg-white text-purple-900 font-semibold hover:bg-purple-50 transition-colors"
+      >
+        Get Started Now
+        <svg className="ml-2 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+        </svg>
+      </a>
+    </div>
+  </div>
+</div>

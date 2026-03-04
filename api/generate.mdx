@@ -1,0 +1,174 @@
+---
+title: 'Generate Video'
+description: 'POST /api/generate - Generate an AI-powered video presentation'
+---
+
+## Endpoint
+
+```
+POST /api/generate
+```
+
+Generates a complete video presentation with AI-generated content, narration, visuals, and animations.
+
+<Note>
+This is a long-running operation that can take several minutes. Use the [Progress endpoint](/api/progress) to track generation status in real-time.
+</Note>
+
+## Request Body
+
+<ParamField body="topic" type="string" required>
+  The topic or subject for the presentation. This will be used to generate content, images, and animations.
+  
+  Example: `"Introduction to Machine Learning"`
+</ParamField>
+
+<ParamField body="num_slides" type="integer" default="5">
+  The number of slides to generate in the presentation.
+  
+  Default: `5`
+</ParamField>
+
+<ParamField body="language" type="string" default="english">
+  The language for voice narration.
+  
+  Default: `"english"`
+</ParamField>
+
+<ParamField body="tone" type="string" default="formal">
+  The tone of the presentation narration.
+  
+  Default: `"formal"`
+</ParamField>
+
+## Response
+
+<ResponseField name="status" type="string">
+  Status of the generation request. Returns `"success"` when completed.
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Human-readable message describing the result.
+</ResponseField>
+
+<ResponseField name="content_data" type="object">
+  The generated presentation content structure including slides, titles, and content.
+  
+  Contains:
+  - `title`: Presentation title
+  - `slides`: Array of slide objects with titles, content, and visual specifications
+</ResponseField>
+
+<ResponseField name="script_data" type="object">
+  The generated narration scripts with timestamps for each slide.
+  
+  Contains:
+  - `slide_scripts`: Array of scripts with `start_time`, `end_time`, and `narration_text`
+  - `total_duration`: Total video duration in seconds
+</ResponseField>
+
+<ResponseField name="video_path" type="string">
+  Full file system path to the generated video file.
+</ResponseField>
+
+<ResponseField name="video_filename" type="string">
+  The filename of the generated video. Use this with the [Video endpoint](/api/video) to stream the video.
+</ResponseField>
+
+## Generation Process
+
+The endpoint performs the following steps:
+
+1. **Content Generation** (10%): Creates presentation structure and slide content
+2. **Script Generation** (20%): Generates narration scripts with timestamps
+3. **Audio Generation** (30-49%): Generates voice narration for each slide
+4. **Visual Generation** (50-80%): Creates slides with text, images, or animations
+5. **Video Composition** (85-95%): Combines slides and audio into final video
+6. **Completion** (100%): Returns video information
+
+<Note>
+Track progress in real-time using the [Progress endpoint](/api/progress) with the generation ID derived from the sanitized topic name.
+</Note>
+
+## Example Request
+
+```bash
+curl -X POST http://localhost:8000/api/generate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "topic": "Introduction to Machine Learning",
+    "num_slides": 5,
+    "language": "english",
+    "tone": "formal"
+  }'
+```
+
+## Example Response
+
+```json
+{
+  "status": "success",
+  "message": "Presentation video generated successfully",
+  "content_data": {
+    "title": "Introduction to Machine Learning",
+    "slides": [
+      {
+        "slide_number": 1,
+        "title": "What is Machine Learning?",
+        "content_text": "Machine learning is a subset of artificial intelligence...",
+        "needs_animation": true,
+        "needs_image": false,
+        "duration": 12.5
+      }
+    ]
+  },
+  "script_data": {
+    "slide_scripts": [
+      {
+        "slide_number": 1,
+        "start_time": 0,
+        "end_time": 12.5,
+        "narration_text": "Welcome to our introduction to machine learning..."
+      }
+    ],
+    "total_duration": 62.3
+  },
+  "video_path": "/path/to/output/Introduction_to_Machine_Learning_final.mp4",
+  "video_filename": "Introduction_to_Machine_Learning_final.mp4"
+}
+```
+
+## Error Responses
+
+### 500 Internal Server Error
+
+Returned when video generation fails:
+
+```json
+{
+  "detail": "Error: Failed to generate content - API key not configured"
+}
+```
+
+## Generation ID
+
+The generation ID is derived from the topic by:
+1. Taking the first 30 characters
+2. Replacing spaces with underscores
+3. Removing special characters (`:`, `/`, `\`, `"`, `'`, `?`, `!`)
+
+Example: `"Introduction to Machine Learning"` becomes `"Introduction_to_Machine_Learn"`
+
+This ID is used to track progress via the SSE endpoint.
+
+## Visual Types
+
+Slides can have three types of visuals (mutually exclusive):
+
+1. **Animation**: Generated using Manim for mathematical/technical concepts
+2. **Image**: Fetched from external sources based on keywords
+3. **Text-only**: Default slide with styled text content
+
+<Note>
+Each slide will have only ONE visual type. If both animation and image are flagged, animation takes priority.
+</Note>

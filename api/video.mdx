@@ -1,0 +1,258 @@
+---
+title: 'Stream Video'
+description: 'GET /api/video/{filename} - Stream generated video with range request support'
+---
+
+## Endpoint
+
+```
+GET /api/video/{filename}
+```
+
+Streams a generated video file with support for HTTP Range Requests (RFC 7233), enabling video seeking, resumable downloads, and efficient streaming.
+
+## Path Parameters
+
+<ParamField path="filename" type="string" required>
+  The filename of the video to stream. This is returned in the `video_filename` field from the [Generate endpoint](/api/generate).
+  
+  Example: `"Introduction_to_Machine_Learning_final.mp4"`
+</ParamField>
+
+## Request Headers
+
+<ParamField header="Range" type="string">
+  Optional range header for partial content requests following RFC 7233 format.
+  
+  Format: `bytes=start-end`
+  
+  Examples:
+  - `bytes=0-1023` - First 1024 bytes
+  - `bytes=1024-` - From byte 1024 to end
+  - `bytes=0-` - Entire file (same as no Range header)
+</ParamField>
+
+## Response Headers
+
+<ResponseField name="Content-Type" type="string">
+  Always set to `video/mp4`
+</ResponseField>
+
+<ResponseField name="Accept-Ranges" type="string">
+  Set to `bytes` to indicate range request support
+</ResponseField>
+
+<ResponseField name="Content-Length" type="string">
+  Size of the content being returned (full file size or range size)
+</ResponseField>
+
+<ResponseField name="Content-Range" type="string">
+  Only present for range requests (206 responses).
+  
+  Format: `bytes start-end/total`
+  
+  Example: `bytes 0-1023/5242880`
+</ResponseField>
+
+<ResponseField name="Content-Encoding" type="string">
+  Set to `identity` to indicate no encoding
+</ResponseField>
+
+<ResponseField name="Access-Control-Expose-Headers" type="string">
+  CORS header exposing content metadata headers to the client
+</ResponseField>
+
+## Response Status Codes
+
+### 200 OK
+
+Returned when streaming the entire file (no Range header):
+
+```bash
+curl -I http://localhost:8000/api/video/example_final.mp4
+```
+
+Response headers:
+```
+HTTP/1.1 200 OK
+content-type: video/mp4
+accept-ranges: bytes
+content-length: 5242880
+content-encoding: identity
+```
+
+### 206 Partial Content
+
+Returned when streaming a range of bytes:
+
+```bash
+curl -I http://localhost:8000/api/video/example_final.mp4 \
+  -H "Range: bytes=0-1023"
+```
+
+Response headers:
+```
+HTTP/1.1 206 Partial Content
+content-type: video/mp4
+accept-ranges: bytes
+content-length: 1024
+content-range: bytes 0-1023/5242880
+content-encoding: identity
+```
+
+### 404 Not Found
+
+Returned when the video file doesn't exist:
+
+```json
+{
+  "detail": "Video not found: example_final.mp4"
+}
+```
+
+### 416 Range Not Satisfiable
+
+Returned when the Range header is invalid:
+
+```json
+{
+  "detail": "Invalid request range (Range:'bytes=9999999-')"
+}
+```
+
+Common causes:
+- Start position greater than end position
+- Start position is negative
+- End position exceeds file size
+
+## Range Request Behavior
+
+### Chunk Size
+
+The server streams video in chunks of 10,000 bytes (10 KB) for optimal performance.
+
+### Valid Range Examples
+
+| Range Header | Description |
+|--------------|-------------|
+| `bytes=0-1023` | First 1024 bytes |
+| `bytes=1024-2047` | Second kilobyte |
+| `bytes=1024-` | From byte 1024 to end |
+| `bytes=-1024` | Last 1024 bytes (not supported by this implementation) |
+
+<Note>
+The implementation requires an explicit start position. Open-ended ranges like `bytes=-1024` (last N bytes) are not supported.
+</Note>
+
+## Example Requests
+
+### Stream Full Video
+
+```bash
+curl http://localhost:8000/api/video/Introduction_to_Machine_Learning_final.mp4 \
+  --output video.mp4
+```
+
+### Stream with Range Request
+
+```bash
+curl http://localhost:8000/api/video/Introduction_to_Machine_Learning_final.mp4 \
+  -H "Range: bytes=0-1048575" \
+  --output video_chunk.mp4
+```
+
+### JavaScript (Fetch API)
+
+```javascript
+const filename = 'Introduction_to_Machine_Learning_final.mp4';
+const response = await fetch(
+  `http://localhost:8000/api/video/${filename}`
+);
+
+if (response.ok) {
+  const blob = await response.blob();
+  const videoUrl = URL.createObjectURL(blob);
+  document.querySelector('video').src = videoUrl;
+}
+```
+
+### HTML5 Video Element
+
+```html
+<video controls width="800">
+  <source 
+    src="http://localhost:8000/api/video/Introduction_to_Machine_Learning_final.mp4" 
+    type="video/mp4"
+  >
+  Your browser does not support video playback.
+</video>
+```
+
+<Note>
+HTML5 video players automatically use range requests for seeking, so no special client-side code is needed.
+</Note>
+
+## Implementation Details
+
+### Storage Location
+
+Videos are stored in the `Config.FINAL_DIR` directory (configured in `backend/config.py`).
+
+### File Format
+
+All generated videos are in MP4 format with H.264 video codec.
+
+### Streaming Process
+
+1. Server receives request with optional Range header
+2. Validates file exists in final output directory
+3. Parses Range header (if present) and validates bounds
+4. Streams file in 10 KB chunks
+5. Closes file handle after streaming completes
+
+## CORS Support
+
+The endpoint supports CORS for video streaming from web applications:
+
+- Allowed origins: `http://localhost:5173`, `http://127.0.0.1:5173`
+- Exposed headers include content metadata for proper video playback
+
+## Performance Considerations
+
+<Note>
+Range requests enable efficient video streaming by allowing:
+- **Instant seeking**: Jump to any point without downloading entire file
+- **Bandwidth efficiency**: Only download the portions being watched
+- **Resume capability**: Continue downloads from interruption point
+</Note>
+
+## Error Examples
+
+### Video Not Found
+
+Request:
+```bash
+curl http://localhost:8000/api/video/nonexistent.mp4
+```
+
+Response:
+```json
+{
+  "detail": "Video not found: nonexistent.mp4"
+}
+```
+
+### Invalid Range
+
+Request:
+```bash
+curl http://localhost:8000/api/video/example_final.mp4 \
+  -H "Range: bytes=5000-1000"
+```
+
+Response:
+```json
+{
+  "detail": "Invalid request range (Range:'bytes=5000-1000')"
+}
+```

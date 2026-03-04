@@ -1,0 +1,325 @@
+---
+title: VoiceGenerator
+description: Generates voice narration audio using Sarvam AI text-to-speech API
+---
+
+## Overview
+
+The `VoiceGenerator` class converts narration scripts into audio files using Sarvam AI's multilingual TTS API. It supports 11+ Indian languages and generates high-quality voice narration for presentations.
+
+## Class Definition
+
+```python
+from generators.voice_generator import VoiceGenerator
+
+voice_gen = VoiceGenerator()
+```
+
+### Constructor
+
+```python
+def __init__(self)
+```
+
+Initializes the voice generator with Sarvam AI API configuration.
+
+**Configuration:**
+- **API Key**: `Config.SARVAM_API_KEY`
+- **API URL**: `Config.SARVAM_TTS_URL`
+- **Model**: `Config.SARVAM_MODEL`
+- **Sample Rate**: 22050 Hz
+
+## Methods
+
+### generate_voice_for_slide
+
+Generates voice audio for a single slide.
+
+```python
+def generate_voice_for_slide(narration_text: str, slide_number: int, 
+                             topic: str, language: str = "english") -> str
+```
+
+<ParamField path="narration_text" type="string" required>
+  The narration text to convert to speech (max 500 characters)
+</ParamField>
+
+<ParamField path="slide_number" type="int" required>
+  The slide number (used for filename)
+</ParamField>
+
+<ParamField path="topic" type="string" required>
+  Presentation topic (used for filename)
+</ParamField>
+
+<ParamField path="language" type="string" default="english">
+  Language for voice synthesis. Supported languages:
+  - `english` (en-IN)
+  - `hindi` (hi-IN)
+  - `kannada` (kn-IN)
+  - `telugu` (te-IN)
+  - `tamil` (ta-IN)
+  - `bengali` (bn-IN)
+  - `gujarati` (gu-IN)
+  - `malayalam` (ml-IN)
+  - `marathi` (mr-IN)
+  - `odia` (or-IN)
+  - `punjabi` (pa-IN)
+</ParamField>
+
+<ResponseField name="return" type="string">
+  Absolute path to the generated audio file (WAV format)
+</ResponseField>
+
+**Returns example:**
+
+```python
+"/path/to/audio/Newtons_Laws_of_Motion_slide_1.wav"
+```
+
+### generate_complete_audio
+
+Generates complete audio for all slides combined into one file.
+
+```python
+def generate_complete_audio(script_data: Dict, language: str = "english") -> str
+```
+
+<ParamField path="script_data" type="Dict" required>
+  Complete script data from `ScriptGenerator` containing all slide narrations
+</ParamField>
+
+<ParamField path="language" type="string" default="english">
+  Language for voice synthesis
+</ParamField>
+
+<ResponseField name="return" type="string">
+  Path to the combined complete audio file
+</ResponseField>
+
+**Process:**
+1. Combines all narration texts
+2. Splits into chunks (max 500 chars each, respecting sentence boundaries)
+3. Generates audio for each chunk
+4. Concatenates all audio chunks
+5. Saves as single WAV file
+
+### combine_slide_audios
+
+Combines individual slide audio files into one complete audio track.
+
+```python
+def combine_slide_audios(slide_audio_paths: dict, topic: str) -> str
+```
+
+<ParamField path="slide_audio_paths" type="dict" required>
+  Dictionary mapping slide numbers to their audio file paths:
+  ```python
+  {1: "/path/to/slide_1.wav", 2: "/path/to/slide_2.wav"}
+  ```
+</ParamField>
+
+<ParamField path="topic" type="string" required>
+  Presentation topic for output filename
+</ParamField>
+
+<ResponseField name="return" type="string">
+  Path to the combined audio file
+</ResponseField>
+
+**Uses MoviePy** to concatenate audio clips in order.
+
+## Speaker Configuration
+
+From `config.py`, speaker voices are mapped per language:
+
+```python
+SARVAM_SPEAKER_MAP = {
+    "english": "anushka",
+    "hindi": "aarav",
+    "kannada": "meera",
+    # ... other languages
+}
+```
+
+## API Request Parameters
+
+From `backend/generators/voice_generator.py:26-36`:
+
+```python
+payload = {
+    "inputs": [narration_text[:500]],  # Text to synthesize
+    "target_language_code": self._get_language_code(language),
+    "speaker": speaker,  # Voice model
+    "pitch": 0,  # Normal pitch
+    "pace": 1.0,  # Normal speed
+    "loudness": 1.5,  # Slightly enhanced volume
+    "speech_sample_rate": 22050,  # CD quality
+    "enable_preprocessing": True,  # Text normalization
+    "model": Config.SARVAM_MODEL
+}
+```
+
+## Usage Example
+
+From `backend/app.py:251-303`:
+
+```python
+# Step 3: Generate voice audio PER SLIDE and get actual durations
+update_progress(generation_id, 30, "generating_audio", 
+                "🎤 Generating voice narration per slide...")
+
+voice_gen = VoiceGenerator()
+slide_audio_paths = {}
+actual_durations = {}
+total_slides = len(script_data['slide_scripts'])
+
+# Generate audio for each slide separately
+for idx, slide_script in enumerate(script_data['slide_scripts'], 1):
+    slide_num = slide_script['slide_number']
+    
+    audio_progress = 30 + int((idx / total_slides) * 15)
+    update_progress(generation_id, audio_progress, "generating_audio", 
+                  f"🎤 Generating audio for slide {idx}/{total_slides}...")
+    
+    try:
+        audio_path = voice_gen.generate_voice_for_slide(
+            slide_script['narration_text'],
+            slide_num,
+            topic,
+            request.language
+        )
+        slide_audio_paths[slide_num] = audio_path
+        
+        # Get actual duration from generated audio
+        from moviepy import AudioFileClip
+        audio_clip = AudioFileClip(audio_path)
+        actual_durations[slide_num] = audio_clip.duration
+        audio_clip.close()
+        
+    except Exception as e:
+        print(f"Error generating audio for slide {slide_num}: {e}")
+        actual_durations[slide_num] = slide_script['end_time'] - slide_script['start_time']
+
+# Combine all slide audios into one file
+update_progress(generation_id, 48, "combining_audio", "🎵 Combining audio tracks...")
+audio_path = voice_gen.combine_slide_audios(slide_audio_paths, topic)
+```
+
+## Text Chunking Strategy
+
+For long narrations, text is split intelligently:
+
+```python
+def _split_text_into_chunks(self, text: str, max_length: int = 500) -> list:
+    """Split text into chunks respecting sentence boundaries"""
+    if len(text) <= max_length:
+        return [text]
+    
+    chunks = []
+    sentences = text.replace('!', '.').replace('?', '.').split('.')
+    current_chunk = ""
+    
+    for sentence in sentences:
+        sentence = sentence.strip()
+        if not sentence:
+            continue
+            
+        # If adding this sentence would exceed limit, save current chunk
+        if len(current_chunk) + len(sentence) + 2 > max_length:
+            if current_chunk:
+                chunks.append(current_chunk.strip())
+            current_chunk = sentence + ". "
+        else:
+            current_chunk += sentence + ". "
+    
+    # Add remaining text
+    if current_chunk.strip():
+        chunks.append(current_chunk.strip())
+    
+    return chunks
+```
+
+## Language Code Mapping
+
+From `backend/generators/voice_generator.py:140-155`:
+
+```python
+def _get_language_code(self, language: str) -> str:
+    """Map language name to Sarvam AI language code"""
+    language_map = {
+        "english": "en-IN",
+        "hindi": "hi-IN",
+        "kannada": "kn-IN",
+        "telugu": "te-IN",
+        "tamil": "ta-IN",
+        "bengali": "bn-IN",
+        "gujarati": "gu-IN",
+        "malayalam": "ml-IN",
+        "marathi": "mr-IN",
+        "odia": "or-IN",
+        "punjabi": "pa-IN"
+    }
+    return language_map.get(language.lower(), "en-IN")
+```
+
+## Audio Response Handling
+
+Sarvam AI returns base64-encoded audio:
+
+```python
+response = requests.post(self.api_url, headers=headers, json=payload)
+response.raise_for_status()
+
+result = response.json()
+
+if "audios" in result and len(result["audios"]) > 0:
+    # Decode base64 audio
+    import base64
+    audio_data = base64.b64decode(result["audios"][0])
+    
+    # Save as WAV file
+    audio_filename = f"{topic_name}_slide_{slide_number}.wav"
+    audio_path = Config.AUDIO_DIR / audio_filename
+    
+    with open(audio_path, 'wb') as f:
+        f.write(audio_data)
+    
+    return str(audio_path)
+```
+
+## Error Handling
+
+```python
+try:
+    response = requests.post(self.api_url, headers=headers, json=payload)
+    if response.status_code != 200:
+        print(f"Sarvam API Error Response: {response.text}")
+        print(f"Request payload: {json.dumps(payload, indent=2)}")
+    response.raise_for_status()
+    
+except Exception as e:
+    print(f"Sarvam AI TTS Error: {e}")
+    raise
+```
+
+## File Output
+
+Generated audio files are saved to:
+
+```
+Config.AUDIO_DIR / "{topic_sanitized}_slide_{slide_number}.wav"
+Config.AUDIO_DIR / "{topic_sanitized}_complete.wav"  # Combined audio
+```
+
+**Format specifications:**
+- **Codec**: PCM signed 16-bit little-endian
+- **Sample Rate**: 22050 Hz
+- **Channels**: Mono
+- **Format**: WAV
+
+## Related Components
+
+- [ScriptGenerator](/api/script-generator) - Provides narration text input
+- [VideoComposer](/api/video-composer) - Uses generated audio for final video
+- Configuration - API keys and endpoints in `config.py`

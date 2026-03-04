@@ -1,0 +1,469 @@
+---
+title: VideoComposer
+description: Composes final video from slides, animations, images, and synchronized audio
+---
+
+## Overview
+
+The `VideoComposer` class is the final step in the video generation pipeline. It combines all slide visuals (text, images, animations), synchronizes them with audio narration, and produces the final MP4 video file.
+
+## Class Definition
+
+```python
+from utils.video_composer import VideoComposer
+
+composer = VideoComposer()
+```
+
+### Constructor
+
+```python
+def __init__(self)
+```
+
+Initializes the video composer (no configuration required).
+
+## Methods
+
+### compose_final_video
+
+Composes the complete presentation video with synchronized audio.
+
+```python
+def compose_final_video(content_data: Dict, script_data: Dict,
+                        slide_paths: Dict[int, str], audio_path: str) -> str
+```
+
+<ParamField path="content_data" type="Dict" required>
+  Presentation content structure from `ContentGenerator`
+</ParamField>
+
+<ParamField path="script_data" type="Dict" required>
+  Script data with timestamps from `ScriptGenerator`
+</ParamField>
+
+<ParamField path="slide_paths" type="Dict[int, str]" required>
+  Dictionary mapping slide numbers to their visual paths. Can contain:
+  - **String**: Path to image file (`.png`) or video file (`.mp4`)
+  - **Dict**: Composite structure for animation overlays:
+    ```python
+    {
+      'type': 'animation_composite',
+      'base_slide': '/path/to/base_slide.png',
+      'animation': '/path/to/animation.mp4'
+    }
+    ```
+</ParamField>
+
+<ParamField path="audio_path" type="string" required>
+  Path to the complete audio narration file (WAV format)
+</ParamField>
+
+<ResponseField name="return" type="string">
+  Absolute path to the generated final video file (MP4)
+</ResponseField>
+
+**Returns example:**
+
+```python
+"/path/to/final/Newtons_Laws_of_Motion_final.mp4"
+```
+
+### create_slide_video
+
+Creates a video clip from a single slide.
+
+```python
+def create_slide_video(slide_path: str, duration: float) -> VideoFileClip
+```
+
+<ParamField path="slide_path" type="string" required>
+  Path to slide visual (image or video file)
+</ParamField>
+
+<ParamField path="duration" type="float" required>
+  Duration in seconds for this slide
+</ParamField>
+
+<ResponseField name="return" type="VideoFileClip">
+  MoviePy video clip object with specified duration
+</ResponseField>
+
+**Behavior:**
+- **Images** (`.png`, `.jpg`): Converted to static video clip
+- **Videos** (`.mp4`, `.mov`, `.avi`): Trimmed or extended to match duration
+- **Missing files**: Creates blank dark blue clip as fallback
+
+### composite_animation_on_slide
+
+Overlays a Manim animation video onto a slide image.
+
+```python
+def composite_animation_on_slide(slide_image_path: str, animation_video_path: str, 
+                                 duration: float) -> VideoFileClip
+```
+
+<ParamField path="slide_image_path" type="string" required>
+  Path to base slide image (PNG)
+</ParamField>
+
+<ParamField path="animation_video_path" type="string" required>
+  Path to Manim animation video (MP4)
+</ParamField>
+
+<ParamField path="duration" type="float" required>
+  Target duration for the composite clip
+</ParamField>
+
+<ResponseField name="return" type="VideoFileClip">
+  Composite video with animation overlaid on slide
+</ResponseField>
+
+**Compositing process:**
+
+1. **Load base slide** as static image clip
+2. **Load animation video**
+3. **Adjust animation duration**:
+   - If too short: Loop the animation
+   - If too long: Trim to exact duration
+4. **Resize animation** to 850×700 pixels
+5. **Position animation** at coordinates (1010, 250) — placeholder area
+6. **Composite** animation on top of slide
+
+### sanitize_filename
+
+Static method to create safe filenames from topic text.
+
+```python
+@staticmethod
+def sanitize_filename(text: str, max_length: int = 30) -> str
+```
+
+<ParamField path="text" type="string" required>
+  Text to sanitize
+</ParamField>
+
+<ParamField path="max_length" type="int" default="30">
+  Maximum filename length
+</ParamField>
+
+<ResponseField name="return" type="string">
+  Sanitized filename-safe string
+</ResponseField>
+
+## Video Composition Pipeline
+
+From `backend/utils/video_composer.py:234-320`:
+
+```python
+def compose_final_video(self, content_data: Dict, script_data: Dict,
+                       slide_paths: Dict[int, str], audio_path: str) -> str:
+    slide_clips = []
+    
+    print(f"\n🎬 Starting video composition...")
+    print(f"   Total slides: {len(content_data['slides'])}")
+    
+    # Process each slide
+    for i, slide in enumerate(content_data['slides']):
+        slide_num = slide['slide_number']
+        
+        # Get script timing for this slide
+        slide_script = next(
+            (s for s in script_data['slide_scripts'] if s['slide_number'] == slide_num),
+            None
+        )
+        
+        if not slide_script:
+            print(f"⚠️ Warning: No script found for slide {slide_num}")
+            continue
+        
+        # Calculate slide duration from script timestamps
+        duration = slide_script['end_time'] - slide_script['start_time']
+        print(f"   Processing slide {slide_num}: {duration:.1f}s")
+        
+        slide_data = slide_paths.get(slide_num)
+        
+        if not slide_data:
+            print(f"⚠️ Warning: No slide visual found for slide {slide_num}")
+            continue
+        
+        # Handle animation composites vs. regular slides
+        if isinstance(slide_data, dict) and slide_data.get('type') == 'animation_composite':
+            print(f"   🎬 Compositing animation for slide {slide_num}...")
+            slide_clip = self.composite_animation_on_slide(
+                slide_data['base_slide'],
+                slide_data['animation'],
+                duration
+            )
+        else:
+            slide_clip = self.create_slide_video(slide_data, duration)
+        
+        slide_clips.append(slide_clip)
+    
+    if not slide_clips:
+        raise ValueError("No slide clips were created")
+    
+    # Concatenate all slides
+    print(f"\n🔗 Concatenating {len(slide_clips)} slide clips...")
+    final_video = concatenate_videoclips(slide_clips, method="compose")
+    print(f"   Total video duration: {final_video.duration:.1f}s")
+    
+    # Add audio track
+    if audio_path and Path(audio_path).exists():
+        print(f"🎵 Adding audio track...")
+        audio = AudioFileClip(audio_path)
+        print(f"   Audio duration: {audio.duration:.1f}s")
+        
+        # Warn if durations don't match
+        if abs(final_video.duration - audio.duration) > 0.5:
+            print(f"⚠️ Warning: Video duration ({final_video.duration:.1f}s) "
+                  f"doesn't match audio ({audio.duration:.1f}s)")
+        
+        final_video = final_video.with_audio(audio)
+    
+    # Prepare output path
+    topic_name = self.sanitize_filename(content_data['topic'], max_length=30)
+    output_path = Config.FINAL_DIR / f"{topic_name}_final.mp4"
+    
+    # Write final video
+    print(f"\n📹 Writing final video to: {output_path}")
+    print(f"   Resolution: 1920x1080")
+    print(f"   FPS: {Config.MANIM_FPS}")
+    print(f"   Codec: libx264 + aac")
+    
+    final_video.write_videofile(
+        str(output_path),
+        fps=Config.MANIM_FPS,
+        codec='libx264',
+        audio_codec='aac',
+        preset='medium',
+        bitrate='5000k',
+        audio_bitrate='192k'
+    )
+    
+    # Cleanup
+    print(f"🧹 Cleaning up video clips...")
+    for clip in slide_clips:
+        clip.close()
+    final_video.close()
+    if audio_path and Path(audio_path).exists():
+        audio.close()
+    
+    print(f"✅ Final video saved: {output_path}")
+    return str(output_path)
+```
+
+## Animation Compositing Details
+
+From `backend/utils/video_composer.py:322-373`:
+
+```python
+def composite_animation_on_slide(self, slide_image_path: str, animation_video_path: str, 
+                                 duration: float) -> VideoFileClip:
+    print(f"      🎬 Compositing animation onto slide...")
+    print(f"         Slide: {Path(slide_image_path).name}")
+    print(f"         Animation: {Path(animation_video_path).name}")
+    print(f"         Duration: {duration:.1f}s")
+    
+    # Load base slide image
+    slide_clip = ImageClip(slide_image_path, duration=duration)
+    
+    # Load animation video
+    animation_clip = VideoFileClip(animation_video_path)
+    original_duration = animation_clip.duration
+    print(f"         Original animation duration: {original_duration:.1f}s")
+    
+    # STEP 1: Handle duration adjustment first (WITHOUT position or resize)
+    if original_duration < duration:
+        print(f"         ⟳ Looping animation to match slide duration")
+        # Calculate how many loops needed
+        num_loops = int(duration / original_duration) + 1
+        
+        # Create list of clips to loop
+        looped_clips = [animation_clip] * num_loops
+        
+        # Concatenate and trim to exact duration
+        animation_adjusted = concatenate_videoclips(looped_clips, method="compose")
+        animation_adjusted = animation_adjusted.subclipped(0, duration)
+        
+    elif original_duration > duration:
+        print(f"         ✂️ Trimming animation to match slide duration")
+        animation_adjusted = animation_clip.subclipped(0, duration)
+        
+    else:
+        print(f"         ✅ Animation duration matches slide duration")
+        animation_adjusted = animation_clip.with_duration(duration)
+    
+    # STEP 2: Now apply resize and position as the FINAL operations
+    animation_final = animation_adjusted.resized(new_size=(850, 700))
+    animation_final = animation_final.with_position((1010, 250))
+    
+    print(f"         ✅ Animation positioned at (1010, 250) with size 850x700")
+    print(f"         Final animation duration: {animation_final.duration:.1f}s")
+    
+    # STEP 3: Composite animation on top of slide
+    composite = CompositeVideoClip(
+        [slide_clip, animation_final],
+        size=(1920, 1080)
+    )
+    
+    return composite
+```
+
+<Note>
+**Critical ordering**: Duration adjustments must be applied BEFORE position/resize operations to prevent position loss during video processing.
+</Note>
+
+## Usage Example
+
+From `backend/app.py:440-451`:
+
+```python
+# Step 5: Compose final video
+update_progress(generation_id, 85, "composing_video", 
+                "🎞️ Composing final video with audio...")
+
+composer = VideoComposer()
+final_video_path = composer.compose_final_video(
+    content_data,
+    script_data,
+    slide_paths,
+    audio_path
+)
+
+update_progress(generation_id, 95, "composing_video", "✅ Video composition complete")
+```
+
+## Video Output Specifications
+
+<ParamField path="Resolution" type="string">
+  1920×1080 (Full HD)
+</ParamField>
+
+<ParamField path="Frame Rate" type="int">
+  `Config.MANIM_FPS` (typically 30 fps)
+</ParamField>
+
+<ParamField path="Video Codec" type="string">
+  H.264 (libx264)
+</ParamField>
+
+<ParamField path="Video Bitrate" type="string">
+  5000k (5 Mbps)
+</ParamField>
+
+<ParamField path="Audio Codec" type="string">
+  AAC
+</ParamField>
+
+<ParamField path="Audio Bitrate" type="string">
+  192k
+</ParamField>
+
+<ParamField path="Encoding Preset" type="string">
+  medium (balances speed and quality)
+</ParamField>
+
+## Slide Types Handling
+
+### Text-Only Slides
+
+```python
+slide_paths[slide_num] = "/path/to/text_slide.png"
+```
+
+Static image loaded as video clip with specified duration.
+
+### Image Slides
+
+```python
+slide_paths[slide_num] = "/path/to/slide_with_image.png"
+```
+
+Composite image (text + fetched image) loaded as video clip.
+
+### Animation Slides
+
+```python
+slide_paths[slide_num] = {
+    'type': 'animation_composite',
+    'base_slide': '/path/to/base_slide.png',
+    'animation': '/path/to/manim_animation.mp4'
+}
+```
+
+Base slide + animation video composited together with precise positioning.
+
+## Timestamp Synchronization
+
+Slide durations are determined by script timestamps:
+
+```python
+slide_script = next(
+    (s for s in script_data['slide_scripts'] if s['slide_number'] == slide_num),
+    None
+)
+
+duration = slide_script['end_time'] - slide_script['start_time']
+```
+
+This ensures perfect audio-visual synchronization.
+
+## Fallback Behavior
+
+### Missing Slide Path
+
+```python
+if not slide_path or not Path(slide_path).exists():
+    print(f"⚠️ Slide path not found, creating blank slide")
+    return ColorClip(size=(1920, 1080), color=(20, 20, 40), duration=duration)
+```
+
+Creates a dark blue blank slide as placeholder.
+
+### Missing Audio
+
+Video is generated without audio track (silent video).
+
+### Duration Mismatch
+
+```python
+if abs(final_video.duration - audio.duration) > 0.5:
+    print(f"⚠️ Warning: Video duration ({final_video.duration:.1f}s) "
+          f"doesn't match audio ({audio.duration:.1f}s)")
+```
+
+Warning logged but composition continues.
+
+## File Output
+
+Final video is saved to:
+
+```
+Config.FINAL_DIR / "{topic_sanitized}_final.mp4"
+```
+
+Example: `Newtons_Laws_of_Motion_final.mp4`
+
+## Memory Management
+
+All video clips are properly closed after use:
+
+```python
+for clip in slide_clips:
+    clip.close()
+final_video.close()
+if audio_path and Path(audio_path).exists():
+    audio.close()
+```
+
+Prevents memory leaks during batch processing.
+
+## Related Components
+
+- [ContentGenerator](/api/content-generator) - Provides slide structure
+- [ScriptGenerator](/api/script-generator) - Provides timing information
+- [VoiceGenerator](/api/voice-generator) - Provides audio track
+- [ManimGenerator](/api/manim-generator) - Generates animation videos
+- [ManimGenerator](/api/manim-generator) - Renders Manim code to video
+- [ContentGenerator](/api/content-generator) - Creates slide content structure

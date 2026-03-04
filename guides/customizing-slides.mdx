@@ -1,0 +1,327 @@
+---
+title: "Customizing Slides"
+description: "Edit slide content, reorder slides, and customize your presentation layout"
+icon: "sliders"
+---
+
+The Slide Editor provides a visual interface for customizing your generated presentation before final export.
+
+## Accessing the Slide Editor
+
+After generating a presentation, click **Edit Slides** to enter the editor. The editor is implemented in `frontend/src/components/SlideEditor.jsx`.
+
+## Editor Interface Overview
+
+The editor displays:
+- **Header**: Presentation theme and export button
+- **Slide cards**: Draggable cards for each slide
+- **Content fields**: Title, content, and media settings
+- **Visual indicators**: Content length warnings, media badges
+
+## Editing Slide Content
+
+<Steps>
+<Step title="Edit slide title">
+  Click in the **Title** field to edit:
+  - Maximum 80 characters
+  - Warning appears if over 60 characters
+  - Displays character count
+  - Title automatically validates on change
+
+  Title input: `frontend/src/components/SlideEditor.jsx:979-1014`
+
+  <Tip>
+  Keep titles under 60 characters for optimal display on slides.
+  </Tip>
+</Step>
+
+<Step title="Edit slide content">
+  Modify the **Content** textarea:
+  - Recommended: 600 chars with media, 800 without
+  - Live character counter
+  - Color-coded status:
+    - Green: Content fits well
+    - Yellow: Nearing limit
+    - Red: Content too long
+
+  Content validation logic: `frontend/src/components/SlideEditor.jsx:830-845`
+
+  **Content formatting tips:**
+  - Use bullet points with `•` character
+  - Create tables with `|` separators
+  - Keep paragraphs concise
+  - Break complex ideas across slides
+</Step>
+
+<Step title="Preview content status">
+  Watch the status indicator above the content field:
+
+  **Status colors:**
+  - ✓ Content fits well (green)
+  - ⚡ Content nearing limit (yellow)
+  - ⚠ Content too long - may overflow (red)
+
+  The status updates in real-time as you type.
+</Step>
+</Steps>
+
+## Reordering Slides
+
+Slides can be rearranged using drag-and-drop functionality.
+
+<Steps>
+<Step title="Identify the drag handle">
+  Each slide card has a drag handle icon (grid dots) in the top-left corner.
+
+  Drag handle: `frontend/src/components/SlideEditor.jsx:507-514`
+</Step>
+
+<Step title="Drag to reorder">
+  1. Click and hold the drag handle
+  2. Drag the slide card up or down
+  3. A visual indicator shows the new position
+  4. Release to drop the slide in place
+
+  Reordering logic: `frontend/src/components/SlideEditor.jsx:779-786`
+</Step>
+
+<Step title="Verify new order">
+  - Slide numbers update automatically
+  - Timeline reflects the new order
+  - Video will render in the new sequence
+</Step>
+</Steps>
+
+<Tip>
+Reorder slides to improve narrative flow. Start with simple concepts and build to complex ones.
+</Tip>
+
+## Managing Slide Images
+
+Some slides include AI-selected images. You can toggle or replace them.
+
+### Image Controls
+
+Each slide with an image shows:
+- **Image preview**: Thumbnail of current image
+- **Include checkbox**: Toggle image on/off
+- **Image URL field**: Edit or replace image source
+- **Position indicator**: Where image appears (left/right)
+- **Search keyword**: What the AI searched for
+
+### Toggling Images
+
+<Steps>
+<Step title="Locate image section">
+  Scroll to the **Image** section of the slide (below content).
+
+  Image section: `frontend/src/components/SlideEditor.jsx:669-755`
+</Step>
+
+<Step title="Toggle include checkbox">
+  Check or uncheck **Include in PPT**:
+  - Checked: Image appears in the presentation
+  - Unchecked: Slide is text-only (more space for content)
+
+  Toggle function: `frontend/src/components/SlideEditor.jsx:788-792`
+</Step>
+</Steps>
+
+### Replacing Images
+
+<Steps>
+<Step title="Find a new image">
+  Search for an appropriate image online or use your own hosted image.
+
+  <Tip>
+  Use high-quality images (1920x1080 or higher) for best results.
+  </Tip>
+</Step>
+
+<Step title="Update image URL">
+  1. Copy the direct image URL
+  2. Paste into the **Image URL** field
+  3. The preview updates automatically
+  4. Verify the image loads correctly
+
+  URL input: `frontend/src/components/SlideEditor.jsx:698-714`
+</Step>
+
+<Step title="Check image metadata">
+  Review the info panel showing:
+  - AI-selected position (left/right)
+  - Search keyword used
+  - Why this image was chosen
+
+  Metadata display: `frontend/src/components/SlideEditor.jsx:716-742`
+</Step>
+</Steps>
+
+## Working with Animations
+
+Slides with animations show special controls and previews.
+
+### Animation Indicators
+
+Animated slides display:
+- **🎬 Animation** badge in the header
+- Animation description
+- Optional code viewer
+- Toggle to include/exclude
+
+Animation section: `frontend/src/components/SlideEditor.jsx:607-665`
+
+### Managing Animations
+
+<Steps>
+<Step title="Preview the animation">
+  The animation preview shows a live rendering of the Manim-generated content.
+
+  Preview component: `frontend/src/components/SlideEditor.jsx:628-635`
+</Step>
+
+<Step title="Toggle animation inclusion">
+  Use the **Include in PPT** checkbox to:
+  - Include: Animation appears in the slide
+  - Exclude: Slide becomes text-only
+
+  <Tip>
+  Animations are backed up when excluded. Re-enabling restores the original animation.
+  </Tip>
+
+  Toggle logic: `frontend/src/components/SlideEditor.jsx:794-808`
+</Step>
+
+<Step title="View or edit animation code">
+  Click **View/Edit Animation Code** to expand:
+  - Shows Manim Python code
+  - Edit directly in the textarea
+  - Changes update the preview
+
+  Code editor: `frontend/src/components/SlideEditor.jsx:647-663`
+
+  <Warning>
+  Editing animation code requires knowledge of Manim syntax. Invalid code will fail to render.
+  </Warning>
+</Step>
+</Steps>
+
+## Deleting Slides
+
+<Steps>
+<Step title="Locate delete button">
+  Each slide has a trash icon button in the top-right corner of its header.
+
+  Delete button: `frontend/src/components/SlideEditor.jsx:527-544`
+</Step>
+
+<Step title="Click to delete">
+  1. Click the trash icon
+  2. Slide is immediately removed
+  3. Remaining slides renumber automatically
+
+  <Warning>
+  You cannot delete the last slide. Presentations must have at least one slide.
+  </Warning>
+
+  Delete logic: `frontend/src/components/SlideEditor.jsx:810-817`
+</Step>
+</Steps>
+
+## Presentation Theme
+
+The theme is applied to all slides and displayed in the header:
+- **Professional**: Blue/gray corporate style
+- **Creative**: Vibrant, colorful design
+- **Minimal**: Clean, simple aesthetic
+
+Theme info: `frontend/src/components/SlideEditor.jsx:847-859`
+
+<Tip>
+The theme is set during generation and applies to the entire presentation. Individual slide themes cannot be changed.
+</Tip>
+
+## Content Guidelines
+
+### Title Best Practices
+
+- Use clear, descriptive titles
+- Keep under 60 characters
+- Use sentence case
+- Avoid special characters
+- Be specific about slide topic
+
+### Content Best Practices
+
+- **With image**: Max 600 characters
+- **Without image**: Max 800 characters
+- Use bullet points for lists
+- One main idea per slide
+- Break long content across multiple slides
+
+### Image Best Practices
+
+- Use relevant, high-quality images
+- Avoid text-heavy images
+- Ensure proper image rights/licensing
+- Test image URLs before saving
+- Consider image placement (left/right)
+
+## Exporting Your Changes
+
+After editing:
+
+1. Click **Export to PPT** in the top-right corner
+2. The system generates a PowerPoint file
+3. Download automatically starts
+4. File includes all your customizations
+
+Export button: `frontend/src/components/SlideEditor.jsx:861-904`
+
+<Tip>
+Export generates a fresh PowerPoint file. Re-export anytime you make changes.
+</Tip>
+
+## Technical Details
+
+### Slide Data Structure
+
+Each slide contains:
+
+```javascript
+{
+  title: "Slide title",
+  content: "Slide content text",
+  image: "https://example.com/image.jpg",
+  imagePosition: "right",
+  imageKeyword: "search term",
+  includeImage: true,
+  animationCode: "/* Manim code */",
+  hasAnimation: true,
+  animationDescription: "What the animation shows",
+  theme: "professional"
+}
+```
+
+### Drag and Drop Library
+
+The editor uses `react-beautiful-dnd` for drag-and-drop:
+- Smooth animations
+- Touch device support
+- Keyboard accessibility
+- Visual feedback
+
+Implementation: `frontend/src/components/SlideEditor.jsx:907-914`
+
+### State Management
+
+Slide changes are managed through React state:
+- Parent component maintains slide array
+- Editor updates through `setSlides` callback
+- Changes persist until export
+
+## Next Steps
+
+- [Learn about animation features](/guides/working-with-animations)
+- [Export your presentation](/guides/exporting-videos)
+- [Create a new presentation](/guides/creating-presentations)

@@ -1,0 +1,336 @@
+---
+title: 'Project Dependencies'
+description: 'Complete overview of backend, frontend, and system dependencies used in the AI Video Presentation Generator'
+---
+
+## Overview
+
+This page documents all dependencies required by the AI Video Presentation Generator, including their versions, purposes, and important notes.
+
+---
+
+## Backend Dependencies (Python)
+
+All backend dependencies are listed in `backend/requirements.txt`.
+
+### Core Framework
+
+| Package | Version | Purpose |
+|---------|---------|----------|
+| **fastapi** | 0.115.0 | Modern, fast web framework for building APIs with Python |
+| **uvicorn** | 0.32.0 | Lightning-fast ASGI server for running FastAPI applications |
+| **python-multipart** | 0.0.12 | Support for form data and file uploads in FastAPI |
+
+<Note>
+FastAPI was chosen for its excellent async support, automatic API documentation, and high performance.
+</Note>
+
+### AI & Content Generation
+
+| Package | Version | Purpose |
+|---------|---------|----------|
+| **google-generativeai** | 0.8.3 | Google Gemini API for AI-powered content and script generation |
+
+**Why Gemini?**
+- Free tier with generous quotas
+- Excellent content understanding and generation
+- Structured output support for JSON responses
+- Multi-modal capabilities (future enhancement)
+
+### Video & Animation Processing
+
+| Package | Version | Purpose |
+|---------|---------|----------|
+| **manim** | 0.18.1 | Mathematical Animation Engine for creating programmatic animations |
+| **moviepy** | ≥2.0.0 | Video editing library for composing slides, audio, and animations |
+| **Pillow** | ≥10.0.0 | Python Imaging Library for slide image creation and manipulation |
+
+<Tip>
+Manim generates mathematical and educational animations programmatically. It's the same library used by 3Blue1Brown for YouTube videos.
+</Tip>
+
+### Utilities & Configuration
+
+| Package | Version | Purpose |
+|---------|---------|----------|
+| **python-dotenv** | 1.0.1 | Load environment variables from `.env` files |
+| **pydantic** | 2.9.2 | Data validation using Python type annotations |
+| **requests** | 2.32.3 | HTTP library for API calls (Unsplash, Sarvam AI) |
+
+---
+
+## Frontend Dependencies (Node.js)
+
+All frontend dependencies are listed in `frontend/package.json`.
+
+### Core Framework
+
+| Package | Version | Type | Purpose |
+|---------|---------|------|----------|
+| **react** | 19.1.1 | Production | UI library for building interactive components |
+| **react-dom** | 19.1.1 | Production | React renderer for web browsers |
+| **vite** | 7.1.7 | Development | Next-generation frontend build tool with HMR |
+| **@vitejs/plugin-react** | 5.0.4 | Development | Official Vite plugin for React Fast Refresh |
+
+### UI & Styling
+
+| Package | Version | Type | Purpose |
+|---------|---------|------|----------|
+| **tailwindcss** | 4.1.14 | Development | Utility-first CSS framework |
+| **@tailwindcss/vite** | 4.1.14 | Production | Tailwind CSS integration for Vite |
+| **lucide-react** | 0.545.0 | Production | Beautiful, consistent icon library |
+
+**Why Tailwind CSS?**
+- Rapid UI development
+- Consistent design system
+- Small bundle size with purging
+- Responsive design utilities
+
+### Features & Functionality
+
+| Package | Version | Type | Purpose |
+|---------|---------|------|----------|
+| **axios** | 1.12.2 | Production | HTTP client for API requests |
+| **@hello-pangea/dnd** | 18.0.1 | Production | Drag-and-drop for slide reordering |
+| **pptxgenjs** | 4.0.1 | Production | PowerPoint export functionality |
+| **gif.js** | 0.2.0 | Production | GIF generation for preview thumbnails |
+
+<Tip>
+`@hello-pangea/dnd` is the maintained fork of `react-beautiful-dnd`, used for the slide editor's drag-and-drop interface.
+</Tip>
+
+### Development Tools
+
+| Package | Version | Purpose |
+|---------|---------|----------|
+| **eslint** | 9.36.0 | JavaScript/React linting |
+| **eslint-plugin-react-hooks** | 5.2.0 | Enforce React Hooks rules |
+| **eslint-plugin-react-refresh** | 0.4.22 | Ensure HMR compatibility |
+| **@types/react** | 19.1.16 | TypeScript type definitions for React |
+| **@types/react-dom** | 19.1.9 | TypeScript type definitions for ReactDOM |
+| **autoprefixer** | 10.4.21 | Add vendor prefixes to CSS |
+| **postcss** | 8.5.6 | CSS transformation tool |
+
+---
+
+## System Dependencies
+
+These must be installed separately on your system.
+
+### FFmpeg
+
+**Version Required**: Latest stable (6.0+)
+
+**Purpose**:
+- Video encoding and decoding
+- Audio processing and merging
+- Format conversion
+- Video composition
+
+**Installation**:
+- Download from [https://ffmpeg.org/download.html](https://ffmpeg.org/download.html)
+- Add to system PATH
+
+**Why FFmpeg?**
+- Industry-standard video processing
+- Supports all common formats
+- Excellent compression
+- Command-line interface integrates well with MoviePy
+
+### Manim Dependencies
+
+Manim requires additional system libraries:
+
+| Dependency | Purpose |
+|------------|----------|
+| **LaTeX** | Math equation rendering |
+| **Cairo** | 2D graphics rendering |
+| **Pango** | Text layout and rendering |
+
+<Note>
+These are typically installed automatically with Manim on Windows. On Linux, you may need to install them separately.
+</Note>
+
+---
+
+## External APIs
+
+The project relies on these external services:
+
+### Google Gemini API
+
+**Purpose**: AI content and script generation
+
+**API Key Required**: Yes (free tier available)
+
+**Get API Key**: [https://makersuite.google.com/app/apikey](https://makersuite.google.com/app/apikey)
+
+**Rate Limits**:
+- 60 requests per minute (free tier)
+- Sufficient for development and moderate usage
+
+---
+
+### Sarvam AI (Text-to-Speech)
+
+**Purpose**: Multi-language voice narration
+
+**API Key Required**: Yes
+
+**Model Used**: `bulbul:v1`
+
+**Supported Languages**:
+- English
+- Hindi
+- Tamil
+- Telugu
+- Kannada
+- Malayalam
+- Bengali
+- Marathi
+- Gujarati
+
+**Why Sarvam AI?**
+- Excellent support for Indian languages
+- Natural-sounding voices
+- Good pronunciation of technical terms
+
+---
+
+### Unsplash API
+
+**Purpose**: High-quality stock images for slides
+
+**API Key Required**: Yes (free tier available)
+
+**Get API Key**: [https://unsplash.com/developers](https://unsplash.com/developers)
+
+**Rate Limits**:
+- 50 requests per hour (free tier)
+- Sufficient for typical usage
+
+**Why Unsplash?**
+- High-quality, curated images
+- Free for development
+- Good search relevance
+- No watermarks
+
+---
+
+## Dependency Installation
+
+### Quick Install (All at Once)
+
+**Backend:**
+```bash
+cd backend
+python -m venv venv
+venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+**Frontend:**
+```bash
+cd frontend
+npm install
+```
+
+### Updating Dependencies
+
+**Backend:**
+```bash
+pip list --outdated
+pip install --upgrade <package-name>
+```
+
+**Frontend:**
+```bash
+npm outdated
+npm update
+```
+
+<Warning>
+Always test after updating dependencies, especially major version bumps.
+</Warning>
+
+---
+
+## Development vs Production
+
+### Backend
+
+No difference - same dependencies for both environments.
+
+### Frontend
+
+- **Development**: Uses Vite dev server with HMR
+- **Production**: Build with `npm run build` creates optimized static files
+
+**Production build command:**
+```bash
+npm run build
+```
+
+**Preview production build:**
+```bash
+npm run preview
+```
+
+---
+
+## Troubleshooting Dependencies
+
+<AccordionGroup>
+  <Accordion title="pip install fails on Windows">
+    Try installing Microsoft Visual C++ Build Tools:
+    
+    ```bash
+    # Or use pre-compiled wheels:
+    pip install --only-binary :all: <package-name>
+    ```
+  </Accordion>
+
+  <Accordion title="Manim installation issues">
+    Manim has complex dependencies. If it fails:
+    
+    1. Ensure you have Visual C++ Build Tools
+    2. Try installing Manim Community Edition: `pip install manim`
+    3. Check [Manim documentation](https://docs.manim.community/) for platform-specific guides
+  </Accordion>
+
+  <Accordion title="npm install takes too long">
+    Use a faster package manager:
+    
+    ```bash
+    # Install pnpm
+    npm install -g pnpm
+    
+    # Use pnpm instead
+    pnpm install
+    ```
+  </Accordion>
+
+  <Accordion title="MoviePy FFmpeg errors">
+    MoviePy requires FFmpeg in PATH:
+    
+    ```bash
+    # Verify FFmpeg is accessible
+    ffmpeg -version
+    
+    # If not, add to PATH or set FFMPEG_BINARY environment variable
+    ```
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Setup Guide" icon="rocket" href="/development/setup">
+    Return to the development setup guide
+  </Card>
+  <Card title="Troubleshooting" icon="wrench" href="/development/troubleshooting">
+    Common issues and solutions
+  </Card>
+</CardGroup>

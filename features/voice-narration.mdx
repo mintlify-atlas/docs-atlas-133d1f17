@@ -1,0 +1,280 @@
+---
+title: Voice Narration
+description: Generate natural-sounding voice narration using Sarvam AI's multilingual text-to-speech engine
+---
+
+## Overview
+
+The Voice Narration feature converts slide text into high-quality audio using **Sarvam AI's TTS (Text-to-Speech) API**. It supports 11 Indian languages and generates professional narration that synchronizes perfectly with your video slides.
+
+## How It Works
+
+### Audio Generation Per Slide
+
+For each slide, the system:
+
+1. **Extracts Narration Text**: Takes the `content_text` from the slide structure
+2. **Selects Voice**: Chooses an appropriate speaker based on the target language
+3. **Generates Audio**: Calls Sarvam AI TTS API to create WAV audio
+4. **Saves Individual Files**: Stores audio as `<topic>_slide_<number>.wav`
+5. **Combines All Audio**: Concatenates individual clips into a single track for final video
+
+<Info>
+The system generates audio **per slide** first, then combines them. This approach allows for easier debugging and potential future features like slide-level audio editing.
+</Info>
+
+## Supported Languages
+
+Sarvam AI supports 11 languages with native Indian accents:
+
+| Language | Code | Default Speaker |
+|----------|------|----------------|
+| English | `en-IN` | Anushka |
+| Hindi | `hi-IN` | Anushka |
+| Kannada | `kn-IN` | Anushka |
+| Telugu | `te-IN` | Anushka |
+| Tamil | `ta-IN` | Anushka |
+| Bengali | `bn-IN` | Anushka |
+| Gujarati | `gu-IN` | Anushka |
+| Malayalam | `ml-IN` | Anushka |
+| Marathi | `mr-IN` | Anushka |
+| Odia | `or-IN` | Anushka |
+| Punjabi | `pa-IN` | Anushka |
+
+### Language Code Mapping
+
+The system automatically maps language names to Sarvam AI codes:
+
+```python
+def _get_language_code(self, language: str) -> str:
+    language_map = {
+        "english": "en-IN",
+        "hindi": "hi-IN",
+        "kannada": "kn-IN",
+        # ... other languages
+    }
+    return language_map.get(language.lower(), "en-IN")  # Default to English
+```
+
+## Audio Configuration
+
+### API Request Parameters
+
+Each TTS request includes fine-tuned parameters for optimal voice quality:
+
+```python
+payload = {
+    "inputs": [narration_text[:500]],  # Max 500 characters per request
+    "target_language_code": "en-IN",
+    "speaker": "anushka",
+    "pitch": 0,                    # Neutral pitch
+    "pace": 1.0,                   # Normal speed
+    "loudness": 1.5,               # Slightly amplified
+    "speech_sample_rate": 22050,  # CD-quality audio
+    "enable_preprocessing": True,  # Improves text normalization
+    "model": "bulbul:v1"          # Sarvam's production TTS model
+}
+```
+
+### Configuration Options
+
+You can customize voice parameters in `config.py`:
+
+```python
+class Config:
+    SARVAM_API_KEY = os.getenv("SARVAM_API_KEY")
+    SARVAM_TTS_URL = "https://api.sarvam.ai/text-to-speech"
+    SARVAM_MODEL = "bulbul:v1"
+    
+    # Speaker selection by language
+    SARVAM_SPEAKER_MAP = {
+        "english": "anushka",
+        "hindi": "anushka",
+        # Add custom speakers here
+    }
+```
+
+<Tip>
+You can adjust `pace` (0.5-2.0) to make narration faster or slower, and `pitch` (-10 to +10) to modify voice tone.
+</Tip>
+
+## Text Chunking
+
+### Character Limit Handling
+
+Sarvam AI's TTS API has a **500-character limit** per request. For longer narrations, the system automatically chunks text:
+
+```python
+def _split_text_into_chunks(self, text: str, max_length: int = 500) -> list:
+    """Split text into chunks respecting sentence boundaries"""
+    chunks = []
+    sentences = text.replace('!', '.').replace('?', '.').split('.')
+    current_chunk = ""
+    
+    for sentence in sentences:
+        if len(current_chunk) + len(sentence) + 2 > max_length:
+            if current_chunk:
+                chunks.append(current_chunk.strip())
+            current_chunk = sentence + ". "
+        else:
+            current_chunk += sentence + ". "
+    
+    if current_chunk.strip():
+        chunks.append(current_chunk.strip())
+    
+    return chunks
+```
+
+<Warning>
+Text chunking respects **sentence boundaries** to prevent mid-sentence cuts. If a single sentence exceeds 500 characters, it will be truncated.
+</Warning>
+
+## Audio Format
+
+### Output Specifications
+
+- **Format**: WAV (Waveform Audio File Format)
+- **Sample Rate**: 22,050 Hz (22 kHz)
+- **Channels**: Mono
+- **Encoding**: Base64 (from API) → Binary (saved to disk)
+- **Codec**: PCM signed 16-bit little-endian (when combined)
+
+### File Naming
+
+Generated audio files follow this pattern:
+```
+workspace/source/data/audio/<topic_name>_slide_<number>.wav
+workspace/source/data/audio/<topic_name>_complete.wav  # Combined version
+```
+
+## Audio Combination
+
+After generating individual slide audio, the system combines them:
+
+```python
+def combine_slide_audios(self, slide_audio_paths: dict, topic: str) -> str:
+    from moviepy import AudioFileClip, concatenate_audioclips
+    
+    # Load all audio clips in order
+    audio_clips = []
+    for slide_num in sorted(slide_audio_paths.keys()):
+        clip = AudioFileClip(slide_audio_paths[slide_num])
+        audio_clips.append(clip)
+    
+    # Concatenate sequentially
+    final_audio = concatenate_audioclips(audio_clips)
+    
+    # Export as single WAV file
+    output_path = Config.AUDIO_DIR / f"{topic}_complete.wav"
+    final_audio.write_audiofile(str(output_path), codec='pcm_s16le')
+    
+    return str(output_path)
+```
+
+<Info>
+The combined audio duration must match the total video duration for proper synchronization. Any mismatch triggers a warning during video composition.
+</Info>
+
+## Usage Example
+
+### Basic Usage
+
+```python
+from backend.generators.voice_generator import VoiceGenerator
+
+voice_gen = VoiceGenerator()
+
+# Generate audio for a single slide
+audio_path = voice_gen.generate_voice_for_slide(
+    narration_text="Welcome to our presentation on quantum physics.",
+    slide_number=1,
+    topic="Quantum Physics Intro",
+    language="english"
+)
+
+print(f"Audio saved to: {audio_path}")
+```
+
+### Multi-Language Support
+
+```python
+# Generate Hindi narration
+audio_path = voice_gen.generate_voice_for_slide(
+    narration_text="क्वांटम भौतिकी परमाणु स्तर पर पदार्थ के व्यवहार का वर्णन करती है।",
+    slide_number=1,
+    topic="Quantum_Physics",
+    language="hindi"  # Automatically maps to hi-IN
+)
+```
+
+## Error Handling
+
+The voice generator includes robust error handling:
+
+```python
+try:
+    response = requests.post(self.api_url, headers=headers, json=payload)
+    response.raise_for_status()
+    
+    result = response.json()
+    if "audios" in result and len(result["audios"]) > 0:
+        audio_data = base64.b64decode(result["audios"][0])
+        # Save audio...
+    else:
+        raise Exception("No audio generated in response")
+        
+except Exception as e:
+    print(f"Sarvam AI TTS Error: {e}")
+    raise
+```
+
+**Common errors:**
+- **Invalid API Key**: Check your `SARVAM_API_KEY` environment variable
+- **Empty Response**: Verify the text input is not empty or too short
+- **Rate Limiting**: Sarvam AI may throttle requests; add delays between chunks if needed
+
+## Best Practices
+
+1. **Keep Slide Text Concise**: Aim for 2-4 sentences per slide (under 500 characters) to avoid chunking
+2. **Use Natural Language**: Write conversationally - the TTS engine handles punctuation and pauses naturally
+3. **Test Different Speakers**: If available, try different speakers to find the best fit for your content
+4. **Monitor Audio Duration**: Ensure generated audio matches expected slide duration
+5. **Handle Special Characters**: Remove or spell out symbols that TTS might mispronounce
+
+<Tip>
+For presentations with technical jargon, consider adding phonetic hints in the text (e.g., "ML" → "M L" or "Machine Learning").
+</Tip>
+
+## Troubleshooting
+
+### Audio Not Generating
+
+**Symptom**: API request fails or returns empty response
+
+**Solutions:**
+- Verify `SARVAM_API_KEY` is set correctly
+- Check if text contains only supported characters
+- Ensure text is not empty or just whitespace
+
+### Audio Duration Mismatch
+
+**Symptom**: Warning during video composition about duration mismatch
+
+**Solutions:**
+- Check if all slides have audio generated
+- Verify slide durations in `content_data.json` are reasonable
+- Regenerate audio if any files are corrupted
+
+### Poor Voice Quality
+
+**Symptom**: Audio sounds robotic or unnatural
+
+**Solutions:**
+- Increase `loudness` parameter (try 1.5-2.0)
+- Adjust `pace` to slow down narration (try 0.9)
+- Ensure `enable_preprocessing` is set to `True`
+
+## Related Features
+
+- [Content Generation](/features/content-generation) - Creates the narration text that feeds into TTS
+- [Video Composition](/features/video-composition) - Synchronizes audio with video timeline

@@ -1,0 +1,634 @@
+---
+title: Backend Architecture
+description: FastAPI application structure, generator pattern, and video processing pipeline
+---
+
+## Overview
+
+The backend is a **FastAPI** application that orchestrates multiple AI services and video processing tools to generate complete video presentations. It follows a modular generator pattern with clear separation of concerns.
+
+## Tech Stack
+
+<CardGroup cols={2}>
+  <Card title="FastAPI" icon="bolt">
+    Modern Python web framework with async support
+  </Card>
+  
+  <Card title="MoviePy" icon="film">
+    Video editing and composition
+  </Card>
+  
+  <Card title="Manim" icon="play">
+    Mathematical animation engine
+  </Card>
+  
+  <Card title="Pillow" icon="image">
+    Image processing and slide rendering
+  </Card>
+</CardGroup>
+
+## Application Structure
+
+### Main Entry Point: app.py
+
+**Location**: `backend/app.py` (538 lines)
+
+**Key Components**:
+
+<Tabs>
+  <Tab title="FastAPI Setup">
+    ```python
+    app = FastAPI(title="Combined Video PPT Generator")
+    
+    # CORS for frontend
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["http://localhost:5173"],
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+    ```
+  </Tab>
+  
+  <Tab title="Request Model">
+    ```python
+    class GenerateRequest(BaseModel):
+        topic: str
+        num_slides: int = 5
+        language: str = "english"
+        tone: str = "formal"
+    ```
+  </Tab>
+  
+  <Tab title="Response Model">
+    ```python
+    class GenerateResponse(BaseModel):
+        status: str
+        message: str
+        content_data: Optional[dict] = None
+        script_data: Optional[dict] = None
+        video_path: Optional[str] = None
+        video_filename: Optional[str] = None
+    ```
+  </Tab>
+</Tabs>
+
+### Core Endpoints
+
+| Endpoint | Method | Purpose | Line Reference |
+|----------|--------|---------|----------------|
+| `/api/generate` | POST | Start video generation | app.py:223 |
+| `/api/progress/{id}` | GET (SSE) | Real-time progress | app.py:129 |
+| `/api/video/{filename}` | GET | Stream video with range requests | app.py:489 |
+| `/api/status/{id}` | GET | Check generation status | app.py:480 |
+| `/health` | GET | Health check | app.py:530 |
+
+## Generator Pattern
+
+Each content generation step is encapsulated in a dedicated generator class following the Single Responsibility Principle.
+
+### 1. ContentGenerator
+
+**Location**: `backend/generators/content_generator.py`
+
+**Purpose**: Generate structured presentation content using Google Gemini
+
+**Output Structure**:
+```json
+{
+  "topic": "Newton's Third Law",
+  "total_slides": 5,
+  "slides": [
+    {
+      "slide_number": 1,
+      "title": "Introduction",
+      "content_text": "Newton's Third Law states...",
+      "needs_image": false,
+      "image_keyword": "",
+      "needs_animation": true,
+      "animation_description": "Show rocket propulsion with force vectors",
+      "duration": 6.0
+    }
+  ]
+}
+```
+
+**Key Features**:
+- Uses Gemini with JSON output mode
+- Enforces mutual exclusivity: slides have EITHER animation OR image
+- Validates slide structure
+- Auto-corrects conflicts in metadata
+- Saves to `outputs/slides/{topic}_content.json`
+
+**Code Reference**: lines 163-258
+
+---
+
+### 2. ScriptGenerator
+
+**Location**: `backend/generators/script_generator.py`
+
+**Purpose**: Generate voice narration scripts with timestamps
+
+**Input**: Content data from ContentGenerator
+
+**Output Structure**:
+```json
+{
+  "topic": "Newton's Third Law",
+  "total_duration": 30.5,
+  "language": "english",
+  "slide_scripts": [
+    {
+      "slide_number": 1,
+      "start_time": 0.0,
+      "end_time": 6.0,
+      "narration_text": "Today we'll explore Newton's Third Law..."
+    }
+  ]
+}
+```
+
+**Special Handling**:
+- **Animation slides**: Scripts include visual descriptions ("As you can see...", "Watch as...")
+- **Image slides**: Scripts reference images naturally
+- **Text slides**: Focus on conceptual explanation
+- Timing adjusted based on actual audio duration
+
+**Code Reference**: lines 1-100+
+
+---
+
+### 3. VoiceGenerator
+
+**Location**: `backend/generators/voice_generator.py`
+
+**Purpose**: Generate voice narration using Sarvam TTS API
+
+**Key Methods**:
+
+<CodeGroup>
+```python generate_voice_for_slide()
+# Generate audio for single slide
+audio_path = voice_gen.generate_voice_for_slide(
+    narration_text,
+    slide_number,
+    topic,
+    language
+)
+# Returns: outputs/audio/{topic}_slide_{num}.mp3
+```
+
+```python combine_slide_audios()
+# Combine all slide audios into one file
+final_audio = voice_gen.combine_slide_audios(
+    slide_audio_paths,  # {1: "path1.mp3", 2: "path2.mp3"}
+    topic
+)
+# Returns: outputs/audio/{topic}_combined.mp3
+```
+</CodeGroup>
+
+**Language Support**:
+- English (`bulbul:v1` model)
+- Hindi, Kannada, Telugu (Sarvam multilingual models)
+
+**Audio Format**:
+- Format: MP3
+- Quality: High (192 kbps)
+- Sample Rate: 24kHz
+
+---
+
+### 4. ImageFetcher
+
+**Location**: `backend/generators/image_fetcher.py`
+
+**Purpose**: Fetch relevant images from Unsplash API
+
+**Usage**:
+```python
+image_fetcher = ImageFetcher()
+image_path = image_fetcher.fetch_image(
+    keyword="physics force diagram",
+    slide_number=2,
+    topic="Newton's Laws"
+)
+# Returns: outputs/images/{topic}_slide_{num}.jpg
+```
+
+**Features**:
+- Searches Unsplash with keyword
+- Downloads highest quality available
+- Fallback to generic image if search fails
+- Respects API rate limits
+
+---
+
+### 5. ManimGenerator
+
+**Location**: `backend/generators/manim_generator.py`
+
+**Purpose**: Generate Manim animation code and coordinate rendering
+
+**Two-Step Process**:
+
+<Steps>
+  <Step title="Code Generation">
+    ```python
+    animation_code = manim_gen.generate_animation_code(
+        slide_data,
+        duration
+    )
+    # Returns Python code string for Manim scene
+    ```
+  </Step>
+  
+  <Step title="Code Saving">
+    ```python
+    code_path = manim_gen.save_animation_code(
+        animation_code,
+        slide_number,
+        topic
+    )
+    # Saves to: outputs/manim_code/{topic}_slide_{num}.py
+    ```
+  </Step>
+</Steps>
+
+**Generated Code Structure**:
+```python
+from manim import *
+
+class SlideAnimation(Scene):
+    def construct(self):
+        # Gemini-generated animation logic
+        # Example: Draw triangle, add squares, show areas
+        pass
+```
+
+**Note**: Actual rendering is handled by VideoRenderer utility
+
+---
+
+## Utility Modules
+
+### SlideRenderer
+
+**Location**: `backend/utils/slide_renderer.py`
+
+**Purpose**: Render PPT-style slides as PNG images using Pillow
+
+**Key Methods**:
+
+<AccordionGroup>
+  <Accordion title="create_text_slide()">
+    Creates text-only slide with title and content
+    
+    **Output**: 1920x1080 PNG with:
+    - Gradient background
+    - Accent bars (top + left)
+    - Centered title
+    - Bullet point content
+    - Slide number footer
+  </Accordion>
+  
+  <Accordion title="create_slide_with_image()">
+    Creates slide with image on right side
+    
+    **Layout**:
+    - Left 50%: Title + content text
+    - Right 50%: Image (scaled to fit)
+  </Accordion>
+  
+  <Accordion title="create_slide_with_animation_placeholder()">
+    Creates base slide for animation overlay
+    
+    **Layout**:
+    - Left 50%: Title + content
+    - Right 50%: Dark placeholder (animation will be composited here)
+  </Accordion>
+</AccordionGroup>
+
+**Font Handling**:
+- Windows: Arial fonts from `C:/Windows/Fonts/`
+- Linux: DejaVu fonts
+- Fallback: PIL default fonts
+
+**Output Directory**: `outputs/slides/`
+
+---
+
+### VideoRenderer
+
+**Location**: `backend/utils/video_renderer.py`
+
+**Purpose**: Render Manim animations to MP4
+
+**Method**:
+```python
+video_path = video_renderer.render_manim_animation(
+    code_path,      # Path to .py file
+    scene_name      # e.g., "SlideAnimation"
+)
+# Executes: manim -pql code_path.py SlideAnimation
+# Returns: outputs/manim_output/{scene_name}.mp4
+```
+
+**Manim Configuration**:
+- Quality: High (`-qh`)
+- Resolution: 1920x1080
+- FPS: 30
+- Format: MP4 (H.264)
+
+**Error Handling**:
+- Captures stdout/stderr from Manim process
+- Throws exception if rendering fails
+- Logs full output for debugging
+
+---
+
+### VideoComposer
+
+**Location**: `backend/utils/video_composer.py` (374 lines)
+
+**Purpose**: Compose final video from all slides and audio
+
+**Main Method**: `compose_final_video()`
+
+**Process**:
+
+<Steps>
+  <Step title="Load Slide Visuals">
+    For each slide, load PNG (text/image) or MP4 (animation)
+  </Step>
+  
+  <Step title="Match Durations">
+    Adjust each slide clip to match narration duration from script
+  </Step>
+  
+  <Step title="Composite Animations">
+    If slide has animation, composite MP4 onto base slide PNG:
+    - Base slide as background (ImageClip)
+    - Animation resized to 850x700 and positioned at (1010, 250)
+    - Loop/trim animation to match narration length
+  </Step>
+  
+  <Step title="Concatenate Slides">
+    Use MoviePy's `concatenate_videoclips()` to join all slides sequentially
+  </Step>
+  
+  <Step title="Add Audio Track">
+    Attach combined audio file to video
+  </Step>
+  
+  <Step title="Render Final Video">
+    Write to `outputs/final/{topic}_final.mp4`
+    - Codec: H.264 (libx264)
+    - Audio: AAC 192 kbps
+    - Bitrate: 5000 kbps
+  </Step>
+</Steps>
+
+**Key Code** (app.py:267-271):
+```python
+slide_clip = self.composite_animation_on_slide(
+    slide_data['base_slide'],    # PNG background
+    slide_data['animation'],     # MP4 animation
+    duration                     # Target duration
+)
+```
+
+**Animation Positioning** (video_composer.py:361-362):
+```python
+animation_final = animation_adjusted.resized(new_size=(850, 700))
+animation_final = animation_final.with_position((1010, 250))
+```
+
+---
+
+## File Output Structure
+
+All generated files are organized under `backend/outputs/`:
+
+```
+outputs/
+├── audio/
+│   ├── {topic}_slide_1.mp3
+│   ├── {topic}_slide_2.mp3
+│   └── {topic}_combined.mp3
+│
+├── images/
+│   └── {topic}_slide_{num}.jpg
+│
+├── manim_code/
+│   └── {topic}_slide_{num}.py
+│
+├── manim_output/
+│   └── {scene_name}.mp4
+│
+├── slides/
+│   ├── {topic}_slide_1.png
+│   └── {topic}_slide_2.png
+│
+├── scripts/
+│   └── {topic}_script.json
+│
+└── final/
+    └── {topic}_final.mp4
+```
+
+**File Naming**:
+- Topics sanitized: spaces → underscores, special chars removed
+- Max length: 30 characters
+- Example: `Explain_Newtons_Third_Law_final.mp4`
+
+---
+
+## Background Task Processing
+
+The main generation endpoint (`/api/generate`) runs synchronously but updates progress asynchronously via SSE:
+
+```python
+@app.post("/api/generate")
+async def generate_presentation(request: GenerateRequest):
+    # Synchronous processing
+    generation_id = sanitize_topic(request.topic)
+    
+    update_progress(generation_id, 10, "generating_content", "📝 Generating content...")
+    content_data = content_gen.generate_content(topic, num_slides)
+    
+    update_progress(generation_id, 20, "generating_scripts", "📜 Generating scripts...")
+    script_data = script_gen.generate_scripts(content_data, language, tone)
+    
+    # ... continue through all steps
+    
+    update_progress(generation_id, 100, "completed", "✅ Video ready!")
+    return GenerateResponse(...)
+```
+
+**Progress Updates** (app.py:52-61):
+```python
+def update_progress(generation_id: str, progress: int, status: str, message: str):
+    timestamp = datetime.now().strftime("%H:%M:%S")
+    generation_status[generation_id] = {
+        "status": status,
+        "progress": progress,
+        "message": message,
+        "timestamp": timestamp
+    }
+    print(f"[{timestamp}] {message}")
+```
+
+**SSE Streaming** (app.py:129-196):
+```python
+@app.get("/api/progress/{generation_id}")
+async def get_progress(generation_id: str):
+    async def event_generator():
+        while retry_count < max_retries:
+            if generation_id in generation_status:
+                status_data = generation_status[generation_id]
+                yield f"data: {json.dumps(status_data)}\n\n"
+                
+                if status_data["status"] in ["completed", "error"]:
+                    break
+            
+            await asyncio.sleep(0.5)
+    
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", ...}
+    )
+```
+
+---
+
+## Video Streaming with Range Requests
+
+The `/api/video/{filename}` endpoint supports HTTP range requests for smooth video seeking:
+
+**Implementation** (app.py:63-125):
+
+<CodeGroup>
+```python Range Header Parsing
+def _get_range_header(range_header: str, file_size: int) -> tuple[int, int]:
+    # Parse "bytes=0-1023" → (0, 1023)
+    h = range_header.replace("bytes=", "").split("-")
+    start = int(h[0]) if h[0] else 0
+    end = int(h[1]) if h[1] else file_size - 1
+    return start, end
+```
+
+```python Chunked Streaming
+def send_bytes_range_requests(file_obj, start, end, chunk_size=10_000):
+    with file_obj as f:
+        f.seek(start)
+        while (pos := f.tell()) <= end:
+            read_size = min(chunk_size, end + 1 - pos)
+            yield f.read(read_size)
+```
+
+```python Response Builder
+def range_requests_response(request, file_path, content_type):
+    file_size = os.stat(file_path).st_size
+    start, end = 0, file_size - 1
+    status_code = 200
+    
+    if range_header := request.headers.get("range"):
+        start, end = _get_range_header(range_header, file_size)
+        status_code = 206  # Partial Content
+    
+    return StreamingResponse(
+        send_bytes_range_requests(open(file_path, "rb"), start, end),
+        status_code=status_code,
+        headers={
+            "content-range": f"bytes {start}-{end}/{file_size}",
+            "accept-ranges": "bytes"
+        }
+    )
+```
+</CodeGroup>
+
+**Benefits**:
+- Enables video seeking in browser
+- Reduces initial load time
+- Supports resume on connection drop
+
+---
+
+## Configuration Management
+
+**Location**: `backend/config.py`
+
+**Environment Variables** (from `.env`):
+```python
+class Config:
+    # API Keys
+    GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+    SARVAM_API_KEY = os.getenv("SARVAM_API_KEY")
+    UNSPLASH_ACCESS_KEY = os.getenv("UNSPLASH_ACCESS_KEY")
+    
+    # API URLs
+    SARVAM_TTS_URL = os.getenv("SARVAM_TTS_URL")
+    
+    # Directories
+    BASE_DIR = Path(__file__).parent
+    OUTPUTS_DIR = BASE_DIR / "outputs"
+    AUDIO_DIR = OUTPUTS_DIR / "audio"
+    IMAGES_DIR = OUTPUTS_DIR / "images"
+    # ... etc
+    
+    # Rendering Settings
+    MANIM_FPS = 30
+    MANIM_QUALITY = "high"
+```
+
+---
+
+## Error Handling
+
+<AccordionGroup>
+  <Accordion title="Generation Errors">
+    ```python
+    try:
+        content_data = content_gen.generate_content(topic, num_slides)
+    except Exception as e:
+        update_progress(generation_id, 0, "error", f"❌ {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+    ```
+  </Accordion>
+  
+  <Accordion title="Missing Files">
+    ```python
+    if not Path(slide_path).exists():
+        print(f"⚠️ Slide not found: {slide_path}")
+        return ColorClip(size=(1920, 1080), color=(20, 20, 40), duration=duration)
+    ```
+  </Accordion>
+  
+  <Accordion title="API Failures">
+    Each generator has fallback logic:
+    - Unsplash: Use placeholder image
+    - Manim: Fall back to text slide
+    - Sarvam: Retry with different voice
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Pipeline Flow" icon="diagram-project" href="/development/pipeline">
+    See the complete step-by-step generation process
+  </Card>
+  
+  <Card title="API Reference" icon="code" href="/api/generate">
+    Explore all API endpoints in detail
+  </Card>
+  
+  <Card title="Dependencies" icon="puzzle-piece" href="/development/dependencies">
+    Learn about the generator dependencies
+  </Card>
+</CardGroup>

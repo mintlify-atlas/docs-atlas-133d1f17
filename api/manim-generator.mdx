@@ -1,0 +1,340 @@
+---
+title: ManimGenerator
+description: Generates Manim animation code for educational visualizations
+---
+
+## Overview
+
+The `ManimGenerator` class uses AI to generate Python code for Manim Community Edition animations. It creates mathematical and educational visualizations that are rendered as videos and composited onto presentation slides.
+
+## Class Definition
+
+```python
+from generators.manim_generator import ManimGenerator
+
+manim_gen = ManimGenerator()
+```
+
+### Constructor
+
+```python
+def __init__(self)
+```
+
+Initializes the Manim code generator with Google Gemini AI.
+
+**Configuration:**
+- **Model**: Uses `Config.GEMINI_MODEL`
+- **Guidelines**: Reads `MANIM_CODE_GUIDE.md` for code generation rules
+
+## Methods
+
+### generate_animation_code
+
+Generates Manim Python code for a specific slide animation.
+
+```python
+def generate_animation_code(slide_data: Dict, duration: float) -> str
+```
+
+<ParamField path="slide_data" type="Dict" required>
+  Slide data containing:
+  - `title`: Slide title
+  - `animation_description`: Detailed description of what to animate
+</ParamField>
+
+<ParamField path="duration" type="float" required>
+  Target animation duration in seconds
+</ParamField>
+
+<ResponseField name="return" type="string">
+  Complete Python code for Manim animation (ready to execute)
+</ResponseField>
+
+**Returns example:**
+
+```python
+from manim import *
+
+class SlideAnimation(Scene):
+    def construct(self):
+        # Pythagorean theorem visualization
+        triangle = Polygon(
+            ORIGIN, RIGHT * 3, RIGHT * 3 + UP * 4,
+            color=BLUE
+        )
+        
+        self.play(Create(triangle))
+        self.wait(2)
+        
+        # Show squares on sides
+        square_a = Square(side_length=3, color=RED).next_to(triangle, DOWN)
+        square_b = Square(side_length=4, color=GREEN).next_to(triangle, LEFT)
+        
+        self.play(Create(square_a), Create(square_b))
+        self.wait(2)
+        
+        # Show equation
+        equation = MathTex("a^2 + b^2 = c^2").to_edge(UP)
+        self.play(Write(equation))
+        self.wait(1)
+```
+
+### save_animation_code
+
+Saves generated animation code to a Python file.
+
+```python
+def save_animation_code(code: str, slide_number: int, topic: str) -> str
+```
+
+<ParamField path="code" type="string" required>
+  The generated Manim Python code
+</ParamField>
+
+<ParamField path="slide_number" type="int" required>
+  Slide number for filename
+</ParamField>
+
+<ParamField path="topic" type="string" required>
+  Presentation topic for filename
+</ParamField>
+
+<ResponseField name="return" type="string">
+  Absolute path to the saved Python file
+</ResponseField>
+
+**Returns example:**
+
+```python
+"/path/to/manim_code/Pythagorean_Theorem_slide_2.py"
+```
+
+### sanitize_filename
+
+Static method to sanitize text for safe filenames.
+
+```python
+@staticmethod
+def sanitize_filename(text: str, max_length: int = 20) -> str
+```
+
+<ParamField path="text" type="string" required>
+  Text to sanitize
+</ParamField>
+
+<ParamField path="max_length" type="int" default="20">
+  Maximum length for filename
+</ParamField>
+
+<ResponseField name="return" type="string">
+  Sanitized filename-safe string
+</ResponseField>
+
+**Sanitization rules:**
+- Truncates to max_length
+- Replaces spaces with underscores
+- Removes: `:`, `/`, `\`, `"`, `'`, `?`, `!`, `*`, `<`, `>`, `|`
+
+## Code Generation Process
+
+From `backend/generators/manim_generator.py:26-78`:
+
+```python
+def generate_animation_code(self, slide_data: Dict, duration: float) -> str:
+    # Read the code guidelines
+    guide_path = Path(__file__).parent.parent / "MANIM_CODE_GUIDE.md"
+    try:
+        with open(guide_path, 'r', encoding='utf-8') as f:
+            guidelines = f.read()
+    except:
+        guidelines = "Follow standard Manim Community Edition syntax."
+    
+    prompt = f"""Generate Manim animation code. Follow ALL rules to avoid errors.
+
+TASK:
+- Title: {slide_data['title']}
+- Animation: {slide_data['animation_description']}
+- Duration: {duration}s
+
+⚠️ CRITICAL: Read "USE ONLY THESE SAFE OBJECTS" section carefully.
+Do NOT use any object not listed there (like CurvedPolyline, NumberLine, Axes, etc.)
+
+RULES:
+{guidelines}
+
+OUTPUT: Only Python code. Class name = 'SlideAnimation'. No markdown, no explanations.
+"""
+    
+    try:
+        response = self.model.generate_content(prompt)
+        code = response.text.strip()
+        
+        # Extract code from markdown blocks
+        match = re.search(r"```(?:python\n)?(.*?)```", code, re.DOTALL)
+        if match:
+            code = match.group(1).strip()
+        
+        # Basic validation
+        required_elements = [
+            "from manim import",
+            "class SlideAnimation",
+            "def construct(self):",
+        ]
+        
+        for element in required_elements:
+            if element not in code:
+                raise ValueError(f"Generated code missing: {element}")
+        
+        return code
+        
+    except Exception as e:
+        print(f"Error generating animation code: {e}")
+        return self._get_fallback_animation(slide_data, duration)
+```
+
+## Fallback Animation
+
+If code generation fails, a simple fallback animation is used:
+
+```python
+def _get_fallback_animation(self, slide_data: Dict, duration: float) -> str:
+    return f"""from manim import *
+
+class SlideAnimation(Scene):
+    def construct(self):
+        # Simple fallback animation
+        text = Text("{slide_data['title']}", font_size=40, color=BLUE)
+        self.play(Write(text))
+        self.wait({duration - 1})
+        self.play(FadeOut(text))
+"""
+```
+
+## Code Validation
+
+Generated code must include:
+
+1. **Import statement**: `from manim import`
+2. **Class definition**: `class SlideAnimation`
+3. **Construct method**: `def construct(self):`
+
+If any required element is missing, the fallback animation is used.
+
+## Usage Example
+
+From `backend/app.py:334-373`:
+
+```python
+# PRIORITY 1: Animation (if requested and no image)
+if has_animation and not has_image:
+    update_progress(generation_id, visual_progress, "generating_animation",
+                  f"🎬 Creating animation for slide {idx}/{total_slides}...")
+    try:
+        slide_script = next(
+            (s for s in script_data['slide_scripts'] if s['slide_number'] == slide_num),
+            None
+        )
+        duration = slide_script['end_time'] - slide_script['start_time'] if slide_script else slide['duration']
+        
+        # Generate animation code
+        animation_code = manim_gen.generate_animation_code(slide, duration)
+        code_path = manim_gen.save_animation_code(animation_code, slide_num, topic)
+        
+        update_progress(generation_id, visual_progress, "generating_animation",
+                      f"🎬 Rendering animation for slide {idx}/{total_slides}...")
+        
+        # Render the animation to video
+        topic_clean_anim = topic[:20].replace(' ', '_').replace(':', '').replace('/', '_')
+        video_path = video_renderer.render_manim_animation(
+            code_path, 
+            f"{topic_clean_anim}_slide_{slide_num}"
+        )
+        animation_paths[slide_num] = video_path
+        
+        # Create base slide with placeholder for animation
+        base_slide = slide_renderer.create_slide_with_animation_placeholder(
+            slide['title'],
+            slide['content_text'],
+            slide_num,
+            topic
+        )
+        
+        # Store composite data
+        slide_paths[slide_num] = {
+            'type': 'animation_composite',
+            'base_slide': base_slide,
+            'animation': video_path
+        }
+        
+        print(f"✅ Generated ANIMATION for slide {slide_num} (NO IMAGE)")
+```
+
+## Manim Code Guidelines
+
+The generator reads `MANIM_CODE_GUIDE.md` which contains:
+
+- **Safe Objects**: Approved Manim objects that work reliably
+- **Forbidden Objects**: Objects that cause errors or crashes
+- **Best Practices**: Code patterns that produce stable animations
+- **Timing Guidelines**: How to structure animations for target duration
+- **Common Pitfalls**: Errors to avoid
+
+<Warning>
+The AI must strictly follow the guidelines to avoid runtime errors during Manim rendering.
+</Warning>
+
+## Animation Rendering Pipeline
+
+1. **Generate Code**: AI creates Python code based on description
+2. **Save Code**: Write to `.py` file in `Config.MANIM_CODE_DIR`
+3. **Render Video**: `VideoRenderer` executes Manim to create MP4
+4. **Composite**: `VideoComposer` overlays animation on slide
+
+## File Output
+
+Generated code files are saved to:
+
+```
+Config.MANIM_CODE_DIR / "{topic_sanitized}_slide_{slide_number}.py"
+```
+
+Example: `Pythagorean_Theorem_slide_2.py`
+
+## Code Extraction
+
+The generator handles markdown-wrapped responses:
+
+```python
+import re
+
+# Extract code from markdown blocks
+match = re.search(r"```(?:python\n)?(.*?)```", code, re.DOTALL)
+if match:
+    code = match.group(1).strip()
+```
+
+## Error Handling
+
+```python
+try:
+    response = self.model.generate_content(prompt)
+    code = response.text.strip()
+    
+    # Extract and validate code
+    # ...
+    
+    return code
+    
+except Exception as e:
+    print(f"Error generating animation code: {e}")
+    # Return fallback simple animation
+    return self._get_fallback_animation(slide_data, duration)
+```
+
+## Related Components
+
+- [VideoRenderer](/api/video-renderer) - Renders generated Manim code to video
+- [VideoComposer](/api/video-composer) - Composites animation onto slides
+- [ContentGenerator](/api/content-generator) - Provides animation descriptions
+- `MANIM_CODE_GUIDE.md` - Code generation guidelines

@@ -1,0 +1,255 @@
+---
+title: 'Environment Setup'
+description: 'Configure environment variables and directory structure for the AI Video Presentation Generator'
+---
+
+## Overview
+
+The AI Video Presentation Generator requires proper configuration of environment variables and directory structure to function correctly. This guide covers all necessary setup steps for both backend and frontend.
+
+## Environment Variables
+
+All environment variables should be configured in a `.env` file located in the `backend/` directory.
+
+### Required API Keys
+
+<ParamField path="GEMINI_API_KEY" type="string" required>
+  Google Gemini API key for AI-powered content generation. Used by the ContentGenerator and ScriptGenerator to create presentation content and narration scripts.
+  
+  See [API Keys](/configuration/api-keys#gemini-api-key) for setup instructions.
+</ParamField>
+
+<ParamField path="SARVAM_API_KEY" type="string" required>
+  Sarvam AI API key for multi-language text-to-speech voice generation. Required for generating audio narration in supported languages.
+  
+  See [API Keys](/configuration/api-keys#sarvam-api-key) for setup instructions.
+</ParamField>
+
+<ParamField path="UNSPLASH_ACCESS_KEY" type="string" required>
+  Unsplash API access key for fetching high-quality images for presentation slides. Used when slides require visual content.
+  
+  See [API Keys](/configuration/api-keys#unsplash-access-key) for setup instructions.
+</ParamField>
+
+### TTS Configuration
+
+<ParamField path="SARVAM_TTS_URL" type="string" default="https://api.sarvam.ai/text-to-speech">
+  Sarvam AI text-to-speech API endpoint URL. Typically does not need to be changed.
+</ParamField>
+
+<ParamField path="SARVAM_MODEL" type="string" default="bulbul:v2">
+  Sarvam AI TTS model version. Valid options:
+  - `bulbul:v2` (recommended, stable)
+  - `bulbul:v3-beta` (latest features, may be unstable)
+</ParamField>
+
+### Server Configuration
+
+<ParamField path="HOST" type="string" default="0.0.0.0">
+  Backend server host address. Use `0.0.0.0` to allow connections from any network interface.
+</ParamField>
+
+<ParamField path="PORT" type="number" default="8000">
+  Backend server port number. Default is 8000 for FastAPI.
+</ParamField>
+
+## Directory Structure
+
+The backend automatically creates the following directory structure in `backend/outputs/`:
+
+### Output Directories
+
+```
+backend/outputs/
+├── scripts/        # Generated narration scripts (JSON)
+├── slides/         # Slide content data (JSON)
+├── manim_code/     # Generated Manim animation code (Python)
+├── videos/         # Rendered Manim animations (MP4)
+├── audio/          # Generated voice narration (WAV)
+├── final/          # Final composed videos (MP4)
+└── images/         # Downloaded Unsplash images
+```
+
+These directories are created automatically on backend startup by `config.py:25-26`.
+
+## Configuration File Setup
+
+### Step 1: Create .env File
+
+Create a `.env` file in the `backend/` directory:
+
+```bash
+cd backend
+cp .env.example .env
+```
+
+### Step 2: Configure Variables
+
+Edit the `.env` file with your API keys:
+
+```bash
+# API Keys
+GEMINI_API_KEY=your_gemini_api_key_here
+SARVAM_API_KEY=your_sarvam_api_key_here
+UNSPLASH_ACCESS_KEY=your_unsplash_access_key_here
+
+# TTS Configuration (optional)
+SARVAM_TTS_URL=https://api.sarvam.ai/text-to-speech
+SARVAM_MODEL=bulbul:v2
+
+# Server Configuration (optional)
+HOST=0.0.0.0
+PORT=8000
+```
+
+<Warning>
+  Never commit your `.env` file to version control. Keep your API keys secure and private.
+</Warning>
+
+## Backend Configuration
+
+The backend configuration is managed by `config.py` which loads environment variables and sets up paths:
+
+### Model Configuration
+
+- **Gemini Model**: `gemini-2.5-flash` (configured in `config.py:29`)
+- **Manim Quality**: `m` (medium quality, can be `l`/`m`/`h`)
+- **Manim FPS**: 30 frames per second
+
+### Language-Speaker Mapping
+
+The system maps supported languages to Sarvam AI voice speakers:
+
+| Language | Speaker | Voice Type |
+|----------|---------|------------|
+| English  | anushka | Indian English Female |
+| Hindi    | manisha | Hindi Female |
+| Kannada  | vidya   | Kannada Female |
+| Telugu   | arya    | Telugu Female |
+
+See [Language Options](/configuration/language-options) for complete language support details.
+
+## Frontend Configuration
+
+The frontend connects to the backend API server. Default configuration:
+
+- **Frontend URL**: `http://localhost:5173`
+- **Backend URL**: `http://localhost:8000`
+- **CORS**: Enabled for localhost development
+
+### CORS Settings
+
+The backend allows CORS requests from:
+- `http://localhost:5173`
+- `http://127.0.0.1:5173`
+
+To add additional origins, modify `app.py:29`.
+
+## System Requirements
+
+### Required Software
+
+1. **Python 3.8+** - Backend runtime
+2. **FFmpeg** - Video processing and composition
+3. **Manim** - Mathematical animation engine
+4. **Node.js 16+** - Frontend development server
+
+### Installing FFmpeg
+
+<Tabs>
+  <Tab title="Windows">
+    1. Download from [ffmpeg.org](https://ffmpeg.org/download.html)
+    2. Extract the archive
+    3. Add `ffmpeg/bin` to System PATH
+    4. Verify: `ffmpeg -version`
+  </Tab>
+  
+  <Tab title="macOS">
+    ```bash
+    brew install ffmpeg
+    ```
+  </Tab>
+  
+  <Tab title="Linux">
+    ```bash
+    sudo apt update
+    sudo apt install ffmpeg
+    ```
+  </Tab>
+</Tabs>
+
+### Installing Manim
+
+```bash
+pip install manim
+```
+
+Manim is used to generate mathematical animations and data visualizations for presentation slides.
+
+## Verification
+
+After configuration, verify your setup:
+
+### Check Environment Variables
+
+```bash
+cd backend
+python -c "from config import Config; print('API Keys configured:', bool(Config.GEMINI_API_KEY and Config.SARVAM_API_KEY and Config.UNSPLASH_ACCESS_KEY))"
+```
+
+### Check Directory Structure
+
+```bash
+ls -la backend/outputs/
+```
+
+You should see all output directories listed.
+
+### Test Backend Server
+
+```bash
+cd backend
+python app.py
+```
+
+Visit `http://localhost:8000/health` - you should see `{"status": "healthy"}`.
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="API Key Not Loading">
+    - Verify `.env` file is in the `backend/` directory
+    - Check for typos in variable names
+    - Ensure no extra spaces around the `=` sign
+    - Restart the backend server after changes
+  </Accordion>
+  
+  <Accordion title="FFmpeg Not Found">
+    - Verify FFmpeg is installed: `ffmpeg -version`
+    - On Windows, ensure FFmpeg is added to System PATH
+    - Restart terminal after PATH changes
+  </Accordion>
+  
+  <Accordion title="Directory Permission Errors">
+    - Ensure write permissions for `backend/outputs/`
+    - On Linux/macOS: `chmod -R 755 backend/outputs/`
+  </Accordion>
+  
+  <Accordion title="CORS Errors">
+    - Check frontend is running on `localhost:5173`
+    - Add your frontend URL to CORS settings in `app.py`
+    - Clear browser cache and restart both servers
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Configure API Keys" icon="key" href="/configuration/api-keys">
+    Learn how to obtain and configure API keys for all services
+  </Card>
+  
+  <Card title="Language Options" icon="language" href="/configuration/language-options">
+    Explore supported languages and voice customization
+  </Card>
+</CardGroup>
